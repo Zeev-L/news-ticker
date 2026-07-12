@@ -1,0 +1,16 @@
+{
+  "name": "news-ticker",
+  "version": "1.0.0",
+  "description": "פס מבזקים רץ למק - חדשות בזמן אמת מ-ynet ומקורות נוספים",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-packager . \"News Ticker\" --platform=darwin --arch=x64 --out=build --overwrite --app-bundle-id=com.zeev.newsticker --app-version=1.0.0 --prune=true --ignore=\"^/build\""
+  },
+  "author": "Zeev",
+  "license": "MIT",
+  "devDependencies": {
+    "@electron/packager": "^20.0.2",
+    "electron": "^33.0.0"
+  }
+}

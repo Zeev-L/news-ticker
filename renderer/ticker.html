@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; user-select: none; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    background: transparent;
+  }
+  #bar {
+    display: flex; align-items: stretch; height: 100%;
+    background: rgba(17, 19, 24, 0.55);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    color: #f2f4f8;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.75);
+  }
+  /* Control cluster on the far left */
+  #controls {
+    display: flex; align-items: center; gap: 1px;
+    padding: 0 5px; flex-shrink: 0;
+    border-left: 1px solid rgba(255,255,255,0.07);
+    background: rgba(0,0,0,0.12);
+  }
+  .ctl {
+    -webkit-app-region: no-drag;
+    width: 18px; height: 18px; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    color: #c2c7d1; font-size: 11px; cursor: pointer;
+    background: transparent; border: none; transition: background .15s, color .15s;
+  }
+  .ctl:hover { background: rgba(255,255,255,0.14); color: #fff; }
+  /* Brand badge (also the drag handle) */
+  #brand {
+    display: flex; align-items: center; gap: 5px;
+    padding: 0 10px; flex-shrink: 0;
+    font-weight: 700; font-size: 10px; letter-spacing: .2px;
+    background: linear-gradient(90deg, rgba(216,31,42,0.92), rgba(179,20,29,0.92));
+    color: #fff; cursor: grab;
+  }
+  #brand:active { cursor: grabbing; }
+  #brand .dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: #fff; box-shadow: 0 0 0 0 rgba(255,255,255,.7);
+    animation: pulse 1.6s infinite;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(255,255,255,.6); }
+    70%  { box-shadow: 0 0 0 7px rgba(255,255,255,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+  }
+  /* Ticker viewport */
+  #viewport { position: relative; flex: 1; overflow: hidden; height: 100%; }
+  /* SCROLL mode */
+  #track {
+    position: absolute; top: 0; left: 0; height: 100%;
+    display: flex; align-items: center; white-space: nowrap;
+    direction: ltr; will-change: transform;
+  }
+  .item {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 0 18px; height: 100%; cursor: pointer;
+    direction: rtl;
+    border-left: 1px solid rgba(255,255,255,0.06);
+  }
+  .item:hover .title { color: #fff; text-decoration: underline; text-underline-offset: 2px; }
+  .badge {
+    font-size: 9px; font-weight: 800; color: #fff;
+    background: #d81f2a; padding: 1px 5px; border-radius: 4px;
+    letter-spacing: .3px; flex-shrink: 0;
+  }
+  .title { color: #eef1f6; font-weight: 500; }
+  .meta { color: #b3b9c6; font-size: 10px; flex-shrink: 0; }
+  .sep { color: #4a5162; }
+  /* FADE mode */
+  #fade {
+    position: absolute; inset: 0; display: none;
+    align-items: center; padding: 0 24px;
+  }
+  #fade.on { display: flex; }
+  #fade .fitem {
+    display: flex; align-items: center; gap: 11px; width: 100%;
+    opacity: 0; transition: opacity .5s ease; cursor: pointer;
+  }
+  #fade .fitem.show { opacity: 1; }
+  #empty {
+    display: flex; align-items: center; height: 100%;
+    padding: 0 20px; color: #8b93a3; font-size: 13px;
+  }
+</style>
+</head>
+<body>
+  <div id="bar">
+    <div id="controls">
+      <button class="ctl" id="btn-settings" title="הגדרות">⚙</button>
+      <button class="ctl" id="btn-hide" title="הסתר (אפשר להחזיר מהאייקון בשורת התפריטים)">✕</button>
+    </div>
+    <div id="brand"><span class="dot"></span><span>מבזקים</span></div>
+    <div id="viewport">
+      <div id="track"></div>
+      <div id="fade"></div>
+      <div id="empty">טוען מבזקים…</div>
+    </div>
+  </div>
+
+<script>
+  const track = document.getElementById('track');
+  const fade = document.getElementById('fade');
+  const emptyEl = document.getElementById('empty');
+  const viewport = document.getElementById('viewport');
+
+  let cfg = { mode: 'scroll', speed: 60, fadeSeconds: 6, fontSize: 15, showSource: true };
+  let news = [];
+
+  document.getElementById('btn-hide').addEventListener('click', () => window.api.hideTicker());
+  document.getElementById('btn-settings').addEventListener('click', () => window.api.openSettings());
+
+  // Drag the whole bar by grabbing the red "מבזקים" handle. Handled in main via
+  // cursor tracking (reliable even in click-through mode).
+  const brandEl = document.getElementById('brand');
+  brandEl.addEventListener('mousedown', (e) => { e.preventDefault(); window.api.dragStart(); });
+  window.addEventListener('mouseup', () => window.api.dragEnd());
+  window.addEventListener('blur', () => window.api.dragEnd());
+
+  function fmtTime(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return hh + ':' + mm;
+  }
+
+  function applyFont() {
+    document.querySelectorAll('.title, #fade .ttl').forEach(el => el.style.fontSize = cfg.fontSize + 'px');
+  }
+
+  // ---------- SCROLL ----------
+  let rafId = null;
+  let posX = 0;
+  let copyWidth = 0;
+  let paused = false;
+
+  function buildScroll() {
+    cancelAnimationFrame(rafId);
+    track.innerHTML = '';
+    if (!news.length) return;
+
+    const makeItem = (n) => {
+      const el = document.createElement('div');
+      el.className = 'item';
+      const parts = [];
+      parts.push('<span class="badge">מבזק</span>');
+      parts.push('<span class="title" dir="rtl">' + escapeHtml(n.title) + '</span>');
+      const metaBits = [];
+      if (n.ts) metaBits.push(fmtTime(n.ts));
+      if (cfg.showSource && n.source) metaBits.push(n.source);
+      if (metaBits.length) parts.push('<span class="meta">' + escapeHtml(metaBits.join(' · ')) + '</span>');
+      el.innerHTML = parts.join('');
+      el.addEventListener('click', () => n.link && window.api.openLink(n.link));
+      return el;
+    };
+
+    // One sequence, then measure and replicate to fill seamlessly.
+    const frag = document.createDocumentFragment();
+    news.forEach(n => frag.appendChild(makeItem(n)));
+    track.appendChild(frag);
+    applyFont();
+
+    copyWidth = track.scrollWidth;
+    const vw = viewport.clientWidth;
+    // Need enough copies so there is never a visible gap.
+    let copies = 1;
+    while (copyWidth * copies < vw + copyWidth) copies++;
+    copies = Math.max(2, copies + 1);
+    for (let i = 1; i < copies; i++) {
+      news.forEach(n => track.appendChild(makeItem(n)));
+    }
+    applyFont();
+
+    posX = 0;
+    track.style.transform = 'translateX(0px)';
+    lastT = null;
+    rafId = requestAnimationFrame(step);
+  }
+
+  let lastT = null;
+  function step(t) {
+    if (lastT == null) lastT = t;
+    const dt = (t - lastT) / 1000;
+    lastT = t;
+    if (!paused) {
+      posX -= cfg.speed * dt;            // move leftward
+      if (-posX >= copyWidth) posX += copyWidth; // seamless wrap
+      track.style.transform = 'translateX(' + posX + 'px)';
+    }
+    rafId = requestAnimationFrame(step);
+  }
+
+  // pause is driven by the mousemove/click-through logic below (over a headline)
+
+  // ---------- FADE ----------
+  let fadeTimer = null;
+  let fadeIdx = 0;
+  function buildFade() {
+    clearInterval(fadeTimer);
+    fade.innerHTML = '';
+    if (!news.length) return;
+    const holder = document.createElement('div');
+    holder.className = 'fitem';
+    holder.innerHTML =
+      '<span class="badge">מבזק</span>' +
+      '<span class="ttl title" dir="rtl" style="font-size:' + cfg.fontSize + 'px"></span>' +
+      '<span class="meta fmeta"></span>';
+    fade.appendChild(holder);
+    fadeIdx = 0;
+    showFade();
+    fadeTimer = setInterval(nextFade, Math.max(2, cfg.fadeSeconds) * 1000);
+    holder.addEventListener('click', () => {
+      const n = news[fadeIdx % news.length];
+      if (n && n.link) window.api.openLink(n.link);
+    });
+  }
+  function showFade() {
+    const holder = fade.querySelector('.fitem');
+    if (!holder) return;
+    const n = news[fadeIdx % news.length];
+    holder.querySelector('.ttl').textContent = n.title;
+    const metaBits = [];
+    if (n.ts) metaBits.push(fmtTime(n.ts));
+    if (cfg.showSource && n.source) metaBits.push(n.source);
+    holder.querySelector('.fmeta').textContent = metaBits.join(' · ');
+    holder.classList.add('show');
+  }
+  function nextFade() {
+    const holder = fade.querySelector('.fitem');
+    if (!holder) return;
+    holder.classList.remove('show');
+    setTimeout(() => { fadeIdx++; showFade(); }, 500);
+  }
+
+  // ---------- Mode switching ----------
+  function render() {
+    applyBarStyle();
+    emptyEl.style.display = news.length ? 'none' : 'flex';
+    if (cfg.mode === 'fade') {
+      fade.classList.add('on');
+      track.style.display = 'none';
+      cancelAnimationFrame(rafId);
+      buildFade();
+    } else {
+      fade.classList.remove('on');
+      track.style.display = 'flex';
+      clearInterval(fadeTimer);
+      buildScroll();
+    }
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function applyBarStyle() {
+    const bar = document.getElementById('bar');
+    const o = (typeof cfg.opacity === 'number') ? cfg.opacity : 0.55;
+    bar.style.background = 'rgba(17, 19, 24, ' + o + ')';
+  }
+
+  // ---------- Click-through: bar ignores mouse except over interactive parts ----------
+  // Main starts the window in "ignore mouse (forward)" mode, so empty areas fall
+  // through to whatever is behind. We flip to interactive only while the cursor is
+  // over a headline / control / drag-handle.
+  let ignoring = true;
+  function updateInteractivity(el) {
+    const interactive = el && el.closest && el.closest('.item, .fitem, .ctl, #brand');
+    const overItem = el && el.closest && el.closest('.item');
+    paused = !!overItem;
+    const shouldIgnore = !interactive;
+    if (shouldIgnore !== ignoring) {
+      ignoring = shouldIgnore;
+      window.api.setIgnore(shouldIgnore);
+    }
+  }
+  document.addEventListener('mousemove', (e) => {
+    updateInteractivity(document.elementFromPoint(e.clientX, e.clientY));
+  });
+  document.body.addEventListener('mouseleave', () => {
+    paused = false;
+    if (!ignoring) { ignoring = true; window.api.setIgnore(true); }
+  });
+
+  // ---------- Wiring ----------
+  window.api.onNews((data) => { news = data || []; render(); });
+  window.api.onConfig((c) => { cfg = Object.assign(cfg, c || {}); render(); });
+
+  window.api.getConfig().then(c => { cfg = Object.assign(cfg, c || {}); return window.api.getNews(); })
+    .then(data => { news = data || []; render(); });
+
+  window.addEventListener('resize', () => { if (cfg.mode !== 'fade') buildScroll(); });
+</script>
+</body>
+</html>

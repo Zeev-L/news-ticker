@@ -1,0 +1,12 @@
+# Dependencies
+node_modules/
+
+# Packaged app output
+build/
+dist/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log

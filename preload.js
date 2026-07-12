@@ -1,0 +1,19 @@
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('api', {
+  // ticker
+  getConfig: () => ipcRenderer.invoke('get-config'),
+  getNews: () => ipcRenderer.invoke('get-news'),
+  onNews: (cb) => ipcRenderer.on('news', (_e, data) => cb(data)),
+  onConfig: (cb) => ipcRenderer.on('config', (_e, data) => cb(data)),
+  openLink: (url) => ipcRenderer.send('open-link', url),
+  hideTicker: () => ipcRenderer.send('hide-ticker'),
+  openSettings: () => ipcRenderer.send('open-settings'),
+  setIgnore: (ignore) => ipcRenderer.send('set-ignore', ignore),
+  dragStart: () => ipcRenderer.send('drag:start'),
+  dragEnd: () => ipcRenderer.send('drag:end'),
+
+  // settings window
+  getSettings: () => ipcRenderer.invoke('get-settings'),
+  saveSettings: (s) => ipcRenderer.invoke('save-settings', s)
+});

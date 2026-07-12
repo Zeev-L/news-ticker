@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --line: #e5e8ec; --text: #1c1f26;
+    --muted: #6b7280; --accent: #d81f2a; --accent-soft: #fdecec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#15171c; --card:#1e2128; --line:#2c303a; --text:#eef1f6; --muted:#9aa2b1; --accent:#ff5a63; --accent-soft:#3a2226; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg); color: var(--text); font-size: 14px; padding: 20px;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 12.5px; margin-bottom: 18px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+  .card h2 { font-size: 13px; text-transform: none; margin: 0 0 12px; color: var(--muted); font-weight: 600; letter-spacing: .2px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 0; }
+  .row label { font-weight: 500; }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  select, input[type="text"], input[type="number"] {
+    font: inherit; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--text); min-width: 130px;
+  }
+  input[type="range"] { width: 160px; }
+  .seg { display: inline-flex; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .seg button { font: inherit; border: none; background: transparent; color: var(--text); padding: 7px 14px; cursor: pointer; }
+  .seg button.active { background: var(--accent); color: #fff; }
+  /* sources */
+  .src { display: flex; align-items: center; gap: 10px; padding: 8px; border: 1px solid var(--line); border-radius: 9px; margin-bottom: 8px; }
+  .src input[type="text"] { flex: 1; min-width: 0; }
+  .src .name { width: 140px; flex: none; }
+  .src .del { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px 8px; border-radius: 6px; }
+  .src .del:hover { background: var(--accent-soft); color: var(--accent); }
+  .addbtn { font: inherit; background: transparent; border: 1px dashed var(--line); color: var(--muted); padding: 8px; border-radius: 9px; width: 100%; cursor: pointer; }
+  .addbtn:hover { border-color: var(--accent); color: var(--accent); }
+  .toggle { position: relative; width: 42px; height: 24px; flex: none; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; inset: 0; background: #c4c9d2; border-radius: 999px; transition: .2s; cursor: pointer; }
+  .slider::before { content: ""; position: absolute; width: 18px; height: 18px; right: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+  .toggle input:checked + .slider { background: var(--accent); }
+  .toggle input:checked + .slider::before { transform: translateX(-18px); }
+  .footer { display: flex; gap: 10px; justify-content: flex-start; margin-top: 6px; }
+  .btn { font: inherit; padding: 9px 18px; border-radius: 9px; border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; font-weight: 600; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { filter: brightness(1.05); }
+  .saved { color: #1a9e57; font-size: 12.5px; align-self: center; opacity: 0; transition: opacity .2s; }
+  .saved.show { opacity: 1; }
+  .keyhint { font-size: 12px; color: var(--muted); }
+  code { background: var(--bg); padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); }
+</style>
+</head>
+<body>
+  <h1>הגדרות פס מבזקים</h1>
+  <div class="sub">בחר מקורות, מיקום וסגנון. שינויים נכנסים לתוקף מיד עם שמירה.</div>
+
+  <div class="card">
+    <h2>מקורות חדשות (RSS)</h2>
+    <div id="sources"></div>
+    <button class="addbtn" id="add-src">＋ הוסף מקור</button>
+    <div class="hint">אפשר לכבות/להדליק כל מקור בלי למחוק אותו. הפס ממזג את כולם לפי זמן.</div>
+  </div>
+
+  <div class="card">
+    <h2>תצוגה</h2>
+    <div class="row">
+      <label>מיקום על המסך</label>
+      <div class="seg" id="seg-position">
+        <button data-v="top">למעלה</button>
+        <button data-v="bottom">למטה</button>
+      </div>
+    </div>
+    <div class="row">
+      <label>סגנון</label>
+      <div class="seg" id="seg-mode">
+        <button data-v="scroll">רץ</button>
+        <button data-v="fade">מתחלף</button>
+      </div>
+    </div>
+    <div class="row" id="row-speed">
+      <label>מהירות הריצה</label>
+      <input type="range" id="speed" min="20" max="160" step="5" />
+    </div>
+    <div class="row" id="row-fade">
+      <label>זמן לכל כותרת (שניות)</label>
+      <input type="number" id="fadeSeconds" min="2" max="30" step="1" />
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>עיצוב</h2>
+    <div class="row">
+      <label>גובה הפס</label>
+      <input type="number" id="height" min="18" max="80" step="1" />
+    </div>
+    <div class="row">
+      <label>גודל טקסט</label>
+      <input type="number" id="fontSize" min="8" max="24" step="1" />
+    </div>
+    <div class="row">
+      <label>שקיפות הרקע</label>
+      <input type="range" id="opacity" min="0.15" max="1" step="0.05" />
+    </div>
+    <div class="row">
+      <label>הצג שם מקור ושעה</label>
+      <span class="toggle"><input type="checkbox" id="showSource" /><span class="slider"></span></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>עדכון וקיצור מקלדת</h2>
+    <div class="row">
+      <label>תדירות רענון (שניות)</label>
+      <input type="number" id="refreshSeconds" min="30" max="1800" step="10" />
+    </div>
+    <div class="row">
+      <label>קיצור להסתרה/הצגה</label>
+      <input type="text" id="hotkey" placeholder="Command+Alt+N" />
+    </div>
+    <div class="row">
+      <label>הפעל אוטומטית בהדלקת המחשב</label>
+      <span class="toggle"><input type="checkbox" id="openAtLogin" /><span class="slider"></span></span>
+    </div>
+    <div class="keyhint">דוגמאות: <code>Command+Alt+N</code> · <code>Control+Shift+M</code>. Command=⌘, Alt=⌥.</div>
+  </div>
+
+  <div class="footer">
+    <button class="btn primary" id="save">שמור</button>
+    <span class="saved" id="saved">✓ נשמר</span>
+  </div>
+
+<script>
+  let s = null;
+
+  function el(id) { return document.getElementById(id); }
+
+  function renderSources() {
+    const wrap = el('sources');
+    wrap.innerHTML = '';
+    s.sources.forEach((src, i) => {
+      const div = document.createElement('div');
+      div.className = 'src';
+      div.innerHTML =
+        '<span class="toggle"><input type="checkbox" ' + (src.enabled ? 'checked' : '') + ' data-i="' + i + '" class="src-on"><span class="slider"></span></span>' +
+        '<input type="text" class="name src-name" data-i="' + i + '" value="' + escapeAttr(src.name) + '" placeholder="שם">' +
+        '<input type="text" class="src-url" data-i="' + i + '" value="' + escapeAttr(src.url) + '" placeholder="https://…/rss.xml">' +
+        '<button class="del" data-i="' + i + '" title="מחק">🗑</button>';
+      wrap.appendChild(div);
+    });
+    wrap.querySelectorAll('.src-on').forEach(c => c.addEventListener('change', e => { s.sources[e.target.dataset.i].enabled = e.target.checked; }));
+    wrap.querySelectorAll('.src-name').forEach(c => c.addEventListener('input', e => { s.sources[e.target.dataset.i].name = e.target.value; }));
+    wrap.querySelectorAll('.src-url').forEach(c => c.addEventListener('input', e => { s.sources[e.target.dataset.i].url = e.target.value; }));
+    wrap.querySelectorAll('.del').forEach(b => b.addEventListener('click', e => { s.sources.splice(e.target.dataset.i, 1); renderSources(); }));
+  }
+
+  function setSeg(groupId, value) {
+    document.querySelectorAll('#' + groupId + ' button').forEach(b => {
+      b.classList.toggle('active', b.dataset.v === value);
+    });
+  }
+
+  function syncModeRows() {
+    const isScroll = s.mode === 'scroll';
+    el('row-speed').style.display = isScroll ? 'flex' : 'none';
+    el('row-fade').style.display = isScroll ? 'none' : 'flex';
+  }
+
+  function fill() {
+    renderSources();
+    setSeg('seg-position', s.position);
+    setSeg('seg-mode', s.mode);
+    el('speed').value = s.speed;
+    el('fadeSeconds').value = s.fadeSeconds;
+    el('height').value = s.height;
+    el('fontSize').value = s.fontSize;
+    el('opacity').value = s.opacity;
+    el('showSource').checked = !!s.showSource;
+    el('refreshSeconds').value = s.refreshSeconds;
+    el('hotkey').value = s.hotkey;
+    el('openAtLogin').checked = !!s.openAtLogin;
+    syncModeRows();
+  }
+
+  document.getElementById('seg-position').addEventListener('click', e => {
+    if (e.target.dataset.v) { s.position = e.target.dataset.v; setSeg('seg-position', s.position); }
+  });
+  document.getElementById('seg-mode').addEventListener('click', e => {
+    if (e.target.dataset.v) { s.mode = e.target.dataset.v; setSeg('seg-mode', s.mode); syncModeRows(); }
+  });
+  el('add-src').addEventListener('click', () => { s.sources.push({ name: 'מקור חדש', url: '', enabled: true }); renderSources(); });
+
+  el('save').addEventListener('click', async () => {
+    s.speed = +el('speed').value;
+    s.fadeSeconds = +el('fadeSeconds').value;
+    s.height = +el('height').value;
+    s.fontSize = +el('fontSize').value;
+    s.opacity = +el('opacity').value;
+    s.showSource = el('showSource').checked;
+    s.refreshSeconds = +el('refreshSeconds').value;
+    s.hotkey = el('hotkey').value.trim();
+    s.openAtLogin = el('openAtLogin').checked;
+    s.sources = s.sources.filter(x => x.url && x.url.trim());
+    await window.api.saveSettings(s);
+    const saved = el('saved'); saved.classList.add('show');
+    setTimeout(() => saved.classList.remove('show'), 1600);
+    renderSources();
+  });
+
+  function escapeAttr(v) { return String(v == null ? '' : v).replace(/"/g, '&quot;'); }
+
+  window.api.getSettings().then(cfg => { s = cfg; fill(); });
+</script>
+</body>
+</html>
