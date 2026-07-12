@@ -99,6 +99,17 @@ The build lands in `build/News Ticker-darwin-x64/News Ticker.app`. Copy it to
 Each lane returns normalized items `{ title, meta: [], badge, ts, action }`, so adding a new
 data source is just a new provider.
 
+## More lanes (roadmap / extensible)
+
+Because every lane is just a small provider, more sources can be added the same way.
+Natural next lanes — **not built yet**, but the architecture supports them:
+
+- **Slack** — unread DMs and channel mentions (official Slack Web API, user token).
+- **Google Chat** — unread messages / spaces (Google Chat API, OAuth like the calendar lane).
+
+Each would be its own bar with its own colour, hotkey, and show/hide — sitting alongside the
+news and calendar lanes. Want one? It's a new file under `providers/`.
+
 Settings are stored at
 `~/Library/Application Support/news-ticker/settings.json` — not in the repo.
 
