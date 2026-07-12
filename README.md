@@ -11,6 +11,10 @@ and show/hide.
 
 > פסים דקים ושקופים בקצה המסך: שורת מבזקים (RSS) ושורת יומן (Google Calendar), כל אחת נשלטת בנפרד.
 
+![News Ticker — calendar & news lanes demo](assets/demo.gif)
+
+<sub>Illustrative mockup. Calendar events shown are examples.</sub>
+
 ---
 
 ## Features
