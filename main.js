@@ -3,6 +3,7 @@ const path = require('path');
 const settingsStore = require('./settings');
 const rss = require('./providers/rss');
 const calendar = require('./providers/calendar');
+const slack = require('./providers/slack');
 
 let settings = settingsStore.DEFAULTS;
 let settingsWin = null;
@@ -12,7 +13,9 @@ let tray = null;
 const laneState = {};
 
 function providerFor(lane) {
-  return lane.kind === 'calendar' ? calendar : rss;
+  if (lane.kind === 'calendar') return calendar;
+  if (lane.kind === 'slack') return slack;
+  return rss;
 }
 function laneById(id) { return settings.lanes.find(l => l.id === id); }
 function enabledLanes() { return settings.lanes.filter(l => l.enabled); }
@@ -30,6 +33,9 @@ function laneConfigForRenderer(lane) {
   const cfg = { ...lane };
   if (lane.kind === 'calendar' && !calendar.isConnected(settings)) {
     cfg.emptyText = 'התחבר ליומן Google בהגדרות ⚙';
+  }
+  if (lane.kind === 'slack' && !(settings.slack && settings.slack.token)) {
+    cfg.emptyText = 'הזן Slack token בהגדרות ⚙';
   }
   return cfg;
 }
@@ -248,6 +254,10 @@ ipcMain.handle('google:disconnect', () => {
 ipcMain.handle('google:calendars', async () => {
   try { return { ok: true, calendars: await calendar.listCalendars(settings) }; }
   catch (e) { return { ok: false, error: e.message, calendars: [] }; }
+});
+ipcMain.handle('slack:test', async () => {
+  try { return await slack.test(settings); }
+  catch (e) { return { ok: false, error: e.message }; }
 });
 
 // ---------- Manual per-lane drag (grab the coloured handle) ----------

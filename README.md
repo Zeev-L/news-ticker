@@ -99,16 +99,19 @@ The build lands in `build/News Ticker-darwin-x64/News Ticker.app`. Copy it to
 Each lane returns normalized items `{ title, meta: [], badge, ts, action }`, so adding a new
 data source is just a new provider.
 
-## More lanes (roadmap / extensible)
+## More lanes
 
-Because every lane is just a small provider, more sources can be added the same way.
-Natural next lanes — **not built yet**, but the architecture supports them:
+Every lane is just a small provider returning `{ title, meta, badge, ts, action }`, so sources
+are easy to add.
 
-- **Slack** — unread DMs and channel mentions (official Slack Web API, user token).
-- **Google Chat** — unread messages / spaces (Google Chat API, OAuth like the calendar lane).
-
-Each would be its own bar with its own colour, hotkey, and show/hide — sitting alongside the
-news and calendar lanes. Want one? It's a new file under `providers/`.
+- **Slack** ✅ — unread DMs (and optionally channels) via the Slack Web API with a **user
+  token**. Enable the Slack lane in ⚙ Settings, paste a Slack User OAuth Token (`xoxp-…`), and
+  it shows your unread conversations, newest first, click → opens Slack. (Scopes on the token:
+  `channels:read groups:read im:read mpim:read channels:history groups:history im:history
+  mpim:history users:read`.)
+- **Google Chat** — technically possible via the Chat API, but Google serves it **only for
+  Google Workspace accounts**; the API does not work for personal `@gmail.com`. Not included.
+- Anything else — add a file under `providers/` and a lane entry in `settings.js`.
 
 Settings are stored at
 `~/Library/Application Support/news-ticker/settings.json` — not in the repo.

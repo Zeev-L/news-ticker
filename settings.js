@@ -37,9 +37,21 @@ const CALENDAR_LANE = {
   calendars: []   // [{ id, name, enabled, color }] — filled from Google, editable in settings
 };
 
+const SLACK_LANE = {
+  id: 'slack', kind: 'slack', title: 'Slack', enabled: false,
+  position: 'top', mode: 'scroll', speed: 45, fadeSeconds: 8,
+  height: 20, fontSize: 11, opacity: 0.6, refreshSeconds: 120,
+  hotkey: 'Command+Alt+S', customPos: null,
+  barRgb: '26,15,38', badgeBg: '#611f69',
+  badgeMode: 'count', showMeta: true,
+  emptyText: 'אין הודעות שלא נקראו',
+  includeChannels: false   // DMs only by default; toggle on to include channels
+};
+
 const DEFAULTS = {
-  lanes: [NEWS_LANE, CALENDAR_LANE],
+  lanes: [NEWS_LANE, CALENDAR_LANE, SLACK_LANE],
   google: { clientId: '', clientSecret: '', refreshToken: '', email: '' },
+  slack: { token: '' },
   openAtLogin: false
 };
 

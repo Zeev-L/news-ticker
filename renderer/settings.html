@@ -89,6 +89,7 @@
   function laneCard(lane) {
     const isRss = lane.kind === 'rss';
     const isCal = lane.kind === 'calendar';
+    const isSlack = lane.kind === 'slack';
     const modeScroll = lane.mode === 'scroll';
     return `
     <div class="card lane" data-id="${esc(lane.id)}">
@@ -145,6 +146,18 @@
             </div>
             <div class="subttl">היומנים שלך — כבה/הדלק וקבע צבע לכל אחד</div>
             <div class="cals"><div class="hint">מתחבר…</div></div>
+          </div>` : ''}
+        ${isSlack ? `
+          <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--line)">
+            <div class="row"><label>הצג גם ערוצים (לא רק הודעות אישיות)</label>
+              <span class="toggle"><input type="checkbox" class="f-channels" ${lane.includeChannels?'checked':''}><span class="slider"></span></span></div>
+            <div class="row"><label>Slack User Token</label>
+              <input type="password" class="f-stoken" style="min-width:240px" value="${esc(s.slack.token)}" placeholder="xoxp-…"></div>
+            <div class="row">
+              <button class="btn sm primary s-test">בדוק חיבור</button>
+              <span class="gstatus s-status"></span>
+            </div>
+            <div class="keyhint">איך משיגים token: יוצרים אפליקציית Slack (api.slack.com/apps) → User Token Scopes: <code>channels:read groups:read im:read mpim:read channels:history groups:history im:history mpim:history users:read</code> → Install to Workspace → מעתיקים את "User OAuth Token" (מתחיל ב-<code>xoxp-</code>).</div>
           </div>` : ''}
       </div>
     </div>`;
@@ -208,6 +221,21 @@
       if (s.google.refreshToken) loadCalendars(lane, card);
       else card.querySelector('.cals').innerHTML = '<div class="hint">התחבר ליומן כדי לבחור יומנים.</div>';
     }
+    if (lane.kind === 'slack') {
+      card.querySelector('.s-test').addEventListener('click', () => slackTest(lane, card));
+    }
+  }
+
+  async function slackTest(lane, card) {
+    const st = card.querySelector('.s-status');
+    s.slack.token = card.querySelector('.f-stoken').value.trim();
+    lane.includeChannels = card.querySelector('.f-channels').checked;
+    if (!s.slack.token) { st.className = 'gstatus err'; st.textContent = 'אין token'; return; }
+    st.className = 'gstatus'; st.textContent = 'בודק…';
+    await window.api.saveSettings(collect());
+    const res = await window.api.slackTest();
+    if (res && res.ok) { st.className = 'gstatus ok'; st.textContent = '✅ מחובר: ' + res.user + ' @ ' + res.team; }
+    else { st.className = 'gstatus err'; st.textContent = 'שגיאה: ' + (res && res.error ? res.error : 'לא ידועה'); }
   }
 
   function renderSources(lane) {
@@ -306,6 +334,10 @@
         s.google.clientId = card.querySelector('.f-gclient').value.trim();
         s.google.clientSecret = card.querySelector('.f-gsecret').value.trim();
       }
+      if (lane.kind === 'slack') {
+        lane.includeChannels = card.querySelector('.f-channels').checked;
+        s.slack.token = card.querySelector('.f-stoken').value.trim();
+      }
     });
     const login = el('openAtLogin');
     if (login) s.openAtLogin = login.checked;
@@ -321,6 +353,7 @@
   window.api.getSettings().then(cfg => {
     s = cfg;
     if (!s.google) s.google = { clientId:'', clientSecret:'', refreshToken:'', email:'' };
+    if (!s.slack) s.slack = { token:'' };
     render();
   });
 </script>
