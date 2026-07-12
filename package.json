@@ -12,5 +12,8 @@
   "devDependencies": {
     "@electron/packager": "^20.0.2",
     "electron": "^33.0.0"
+  },
+  "dependencies": {
+    "googleapis": "^173.0.0"
   }
 }

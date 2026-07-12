@@ -1,10 +1,15 @@
-# News Ticker — פס מבזקים למק
+# News Ticker — פס מבזקים ויומן למק
 
-A lightweight macOS **breaking-news ticker** that lives as a thin, translucent bar at the
-top of the screen and streams live headlines from Israeli news sites, merged
-chronologically. Built with Electron.
+A lightweight macOS **ticker** that lives as thin, translucent bars at the top of the screen.
+Each bar is a **lane** fed by its own provider:
 
-> פס דק ושקוף שיושב בקצה המסך ומריץ מבזקים בזמן אמת מ-ynet ומקורות נוספים, ממוזגים לפי זמן.
+- **News lane** — live headlines from Israeli news sites (RSS), merged chronologically.
+- **Calendar lane** — today's Google Calendar meetings, from the current time onward.
+
+Built with Electron. Lanes are independent: each has its own colours, hotkey, drag position,
+and show/hide.
+
+> פסים דקים ושקופים בקצה המסך: שורת מבזקים (RSS) ושורת יומן (Google Calendar), כל אחת נשלטת בנפרד.
 
 ---
 
@@ -40,6 +45,17 @@ Add or remove any feed from the ⚙ Settings panel. Toggle a source off without 
 **Notes:** N12's feed updates slowly and its items link to the mako homepage rather than the
 article. Some Haaretz articles are behind a paywall.
 
+## Calendar lane (Google Calendar)
+
+Shows today's timed events across **all** your calendars (work, personal, family…), only from
+`now` onward, sorted by start time. Each item: `[time]  event title  ·  first 2 attendees  ·
+location` — missing fields are omitted. Click → opens the meeting link (Meet/Zoom/Teams).
+
+**One-time setup:** create a Google Cloud OAuth **Desktop app** client (enable Google Calendar
+API, configure the OAuth consent screen as *External* and publish it *In production* to avoid
+weekly token expiry). Paste the Client ID + Client Secret into the Calendar card in ⚙ Settings
+and click **Connect Google Calendar**. Tokens are stored only in the local settings file.
+
 ## Run (development)
 
 ```bash
@@ -62,12 +78,17 @@ The build lands in `build/News Ticker-darwin-x64/News Ticker.app`. Copy it to
 
 | File | Role |
 |------|------|
-| `main.js` | Electron main process — window, tray, hotkey, drag, IPC, login item |
+| `main.js` | Electron main process — one window per lane, tray, hotkeys, drag, IPC, login item, Google OAuth |
+| `settings.js` | Lanes config + JSON store (userData); migrates the old single-bar schema |
+| `providers/rss.js` | RSS lane provider (wraps `feeds.js`) |
+| `providers/calendar.js` | Google Calendar lane provider + one-time OAuth loopback flow |
 | `feeds.js` | Fetches + parses RSS feeds (in the main process, so no CORS) |
-| `settings.js` | Defaults + JSON store (persisted in the app's userData folder) |
-| `renderer/ticker.html` | The bar UI (scroll + fade, click-through, drag handle) |
-| `renderer/settings.html` | The ⚙ settings panel |
+| `renderer/ticker.html` | The bar UI engine (scroll + fade, click-through, drag, per-lane colours/badge) |
+| `renderer/settings.html` | The ⚙ settings panel (per-lane cards + Google connect) |
 | `preload.js` | Safe IPC bridge between renderer and main |
+
+Each lane returns normalized items `{ title, meta: [], badge, ts, action }`, so adding a new
+data source is just a new provider.
 
 Settings are stored at
 `~/Library/Application Support/news-ticker/settings.json` — not in the repo.

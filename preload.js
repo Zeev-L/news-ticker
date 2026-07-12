@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
-  // ticker
+  // ticker window (main routes by sender window → lane)
   getConfig: () => ipcRenderer.invoke('get-config'),
   getNews: () => ipcRenderer.invoke('get-news'),
   onNews: (cb) => ipcRenderer.on('news', (_e, data) => cb(data)),
@@ -15,5 +15,7 @@ contextBridge.exposeInMainWorld('api', {
 
   // settings window
   getSettings: () => ipcRenderer.invoke('get-settings'),
-  saveSettings: (s) => ipcRenderer.invoke('save-settings', s)
+  saveSettings: (s) => ipcRenderer.invoke('save-settings', s),
+  connectGoogle: () => ipcRenderer.invoke('google:connect'),
+  disconnectGoogle: () => ipcRenderer.invoke('google:disconnect')
 });

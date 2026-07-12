@@ -1,72 +1,167 @@
 const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, shell, screen, nativeImage } = require('electron');
 const path = require('path');
 const settingsStore = require('./settings');
-const { fetchAll } = require('./feeds');
+const rss = require('./providers/rss');
+const calendar = require('./providers/calendar');
 
-let tickerWin = null;
+let settings = settingsStore.DEFAULTS;
 let settingsWin = null;
 let tray = null;
-let settings = settingsStore.DEFAULTS;
-let refreshTimer = null;
-let isVisible = true;
 
-// ---------- Ticker window ----------
-function tickerBounds() {
-  const display = screen.getPrimaryDisplay();
-  const fullBounds = display.bounds;
-  const h = settings.height;
-  // If the user dragged the bar, honour that exact spot; otherwise pin to top/bottom.
-  if (settings.customPos && typeof settings.customPos.y === 'number') {
-    return { x: settings.customPos.x, y: settings.customPos.y, width: fullBounds.width, height: h };
+// Per-lane runtime state: id -> { win, items, timer, dragOffset, dragTimer }
+const laneState = {};
+
+function providerFor(lane) {
+  return lane.kind === 'calendar' ? calendar : rss;
+}
+function laneById(id) { return settings.lanes.find(l => l.id === id); }
+function enabledLanes() { return settings.lanes.filter(l => l.enabled); }
+function stOf(id) { return (laneState[id] = laneState[id] || {}); }
+
+function laneIdForSender(sender) {
+  for (const id in laneState) {
+    if (laneState[id].win && !laneState[id].win.isDestroyed() && laneState[id].win.webContents === sender) return id;
   }
-  return {
-    x: fullBounds.x,
-    y: settings.position === 'bottom' ? fullBounds.y + fullBounds.height - h : fullBounds.y,
-    width: fullBounds.width,
-    height: h
-  };
+  return null;
 }
 
-function createTickerWindow() {
-  const b = tickerBounds();
-  tickerWin = new BrowserWindow({
-    ...b,
-    frame: false,
-    transparent: true,
-    resizable: false,
-    movable: false,
-    minimizable: false,
-    maximizable: false,
-    skipTaskbar: true,
-    hasShadow: false,
-    alwaysOnTop: true,
-    fullscreenable: false,
-    focusable: true,
+// A calendar lane that isn't connected yet shows a connect hint instead of "no meetings".
+function laneConfigForRenderer(lane) {
+  const cfg = { ...lane };
+  if (lane.kind === 'calendar' && !calendar.isConnected(settings)) {
+    cfg.emptyText = 'התחבר ליומן Google בהגדרות ⚙';
+  }
+  return cfg;
+}
+
+// ---------- Bounds / stacking ----------
+function laneBounds(lane) {
+  const fb = screen.getPrimaryDisplay().bounds;
+  const h = lane.height;
+  if (lane.customPos && typeof lane.customPos.y === 'number') {
+    return { x: lane.customPos.x, y: lane.customPos.y, width: fb.width, height: h };
+  }
+  // Stack lanes that share a side and haven't been individually dragged.
+  const side = lane.position || 'top';
+  const stack = enabledLanes().filter(l => (l.position || 'top') === side && !l.customPos);
+  const idx = stack.findIndex(l => l.id === lane.id);
+  const offset = stack.slice(0, idx).reduce((s, l) => s + l.height, 0);
+  const y = side === 'bottom' ? fb.y + fb.height - h - offset : fb.y + offset;
+  return { x: fb.x, y, width: fb.width, height: h };
+}
+
+function createLaneWindow(lane) {
+  const win = new BrowserWindow({
+    ...laneBounds(lane),
+    frame: false, transparent: true, resizable: false, movable: false,
+    minimizable: false, maximizable: false, skipTaskbar: true, hasShadow: false,
+    alwaysOnTop: true, fullscreenable: false, focusable: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false
+      contextIsolation: true, nodeIntegration: false
     }
   });
-
-  tickerWin.setAlwaysOnTop(true, 'screen-saver');
-  tickerWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  // Start click-through: empty areas of the bar fall through to whatever is behind.
-  // The renderer flips this off only while the cursor is over a headline/control.
-  tickerWin.setIgnoreMouseEvents(true, { forward: true });
-  tickerWin.loadFile(path.join(__dirname, 'renderer', 'ticker.html'));
-
-  tickerWin.on('closed', () => { tickerWin = null; });
+  win.setAlwaysOnTop(true, 'screen-saver');
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  win.setIgnoreMouseEvents(true, { forward: true });
+  win.loadFile(path.join(__dirname, 'renderer', 'ticker.html'), { query: { lane: lane.id } });
+  const st = stOf(lane.id);
+  st.win = win;
+  win.on('closed', () => { if (laneState[lane.id]) laneState[lane.id].win = null; });
 }
 
-function applyTickerBounds() {
-  if (tickerWin) tickerWin.setBounds(tickerBounds());
+// Reconcile windows/timers/hotkeys/tray with the current settings.
+function applyLanes() {
+  // Tear down lanes that are gone or disabled.
+  for (const id in laneState) {
+    const lane = laneById(id);
+    const st = laneState[id];
+    if (!lane || !lane.enabled) {
+      if (st.win && !st.win.isDestroyed()) st.win.destroy();
+      st.win = null;
+      if (st.timer) { clearInterval(st.timer); st.timer = null; }
+    }
+  }
+  // Create or update enabled lanes.
+  enabledLanes().forEach(lane => {
+    const st = stOf(lane.id);
+    if (!st.win || st.win.isDestroyed()) {
+      createLaneWindow(lane);
+    } else {
+      st.win.setBounds(laneBounds(lane));
+      st.win.webContents.send('config', laneConfigForRenderer(lane));
+    }
+  });
+  registerHotkeys();
+  startLoops();
+  updateTrayMenu();
 }
 
-function setVisible(v) {
-  isVisible = v;
-  if (!tickerWin) return;
-  if (v) { tickerWin.showInactive(); } else { tickerWin.hide(); }
+// ---------- Data refresh ----------
+async function refreshLane(lane) {
+  try {
+    const items = await providerFor(lane).fetch(lane, settings);
+    const st = stOf(lane.id);
+    st.items = items;
+    if (st.win && !st.win.isDestroyed()) st.win.webContents.send('news', items);
+  } catch (e) {
+    console.error('refresh [' + lane.id + ']:', e.message);
+  }
+}
+
+function startLoops() {
+  for (const id in laneState) {
+    if (laneState[id].timer) { clearInterval(laneState[id].timer); laneState[id].timer = null; }
+  }
+  enabledLanes().forEach(lane => {
+    refreshLane(lane);
+    stOf(lane.id).timer = setInterval(() => refreshLane(lane), Math.max(30, lane.refreshSeconds || 90) * 1000);
+  });
+}
+
+// ---------- Visibility / hotkeys ----------
+function toggleLane(id) {
+  const st = laneState[id];
+  if (!st || !st.win || st.win.isDestroyed()) return;
+  if (st.win.isVisible()) st.win.hide(); else st.win.showInactive();
+  updateTrayMenu();
+}
+function hideLane(id) {
+  const st = laneState[id];
+  if (st && st.win && !st.win.isDestroyed()) { st.win.hide(); updateTrayMenu(); }
+}
+
+function registerHotkeys() {
+  globalShortcut.unregisterAll();
+  enabledLanes().forEach(lane => {
+    if (!lane.hotkey) return;
+    try { globalShortcut.register(lane.hotkey, () => toggleLane(lane.id)); }
+    catch (e) { console.error('Bad hotkey [' + lane.id + ']:', lane.hotkey, e.message); }
+  });
+}
+
+// ---------- Tray ----------
+function updateTrayMenu() {
+  if (!tray) return;
+  const laneItems = enabledLanes().map(lane => {
+    const st = laneState[lane.id];
+    const shown = st && st.win && !st.win.isDestroyed() && st.win.isVisible();
+    return { label: (shown ? 'הסתר: ' : 'הצג: ') + lane.title, click: () => toggleLane(lane.id) };
+  });
+  tray.setContextMenu(Menu.buildFromTemplate([
+    ...laneItems,
+    { type: 'separator' },
+    { label: 'רענן עכשיו', click: () => enabledLanes().forEach(refreshLane) },
+    { label: 'הגדרות…', click: () => createSettingsWindow() },
+    { type: 'separator' },
+    { label: 'יציאה', click: () => app.quit() }
+  ]));
+}
+
+function createTray() {
+  tray = new Tray(nativeImage.createEmpty());
+  tray.setTitle('📰');
+  tray.setToolTip('פס מבזקים ויומן');
   updateTrayMenu();
 }
 
@@ -74,80 +169,19 @@ function setVisible(v) {
 function createSettingsWindow() {
   if (settingsWin) { settingsWin.focus(); return; }
   settingsWin = new BrowserWindow({
-    width: 520,
-    height: 640,
-    title: 'הגדרות פס מבזקים',
-    resizable: true,
-    minimizable: true,
-    maximizable: false,
+    width: 560, height: 720, title: 'הגדרות',
+    resizable: true, minimizable: true, maximizable: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false
+      contextIsolation: true, nodeIntegration: false
     }
   });
   settingsWin.loadFile(path.join(__dirname, 'renderer', 'settings.html'));
   settingsWin.on('closed', () => { settingsWin = null; });
 }
 
-// ---------- Tray ----------
-function updateTrayMenu() {
-  if (!tray) return;
-  const menu = Menu.buildFromTemplate([
-    { label: isVisible ? 'הסתר פס' : 'הצג פס', click: () => setVisible(!isVisible) },
-    { label: 'רענן עכשיו', click: () => pushNews() },
-    { type: 'separator' },
-    { label: 'הגדרות…', click: () => createSettingsWindow() },
-    { type: 'separator' },
-    { label: 'יציאה', click: () => { app.quit(); } }
-  ]);
-  tray.setContextMenu(menu);
-}
-
-function createTray() {
-  tray = new Tray(nativeImage.createEmpty());
-  tray.setTitle('📰');
-  tray.setToolTip('פס מבזקים');
-  updateTrayMenu();
-}
-
-// ---------- News flow ----------
-let latestNews = [];
-
-async function pushNews() {
-  try {
-    latestNews = await fetchAll(settings.sources, settings.maxItems);
-    if (tickerWin) tickerWin.webContents.send('news', latestNews);
-  } catch (e) {
-    console.error('pushNews failed:', e.message);
-  }
-}
-
-function startRefreshLoop() {
-  if (refreshTimer) clearInterval(refreshTimer);
-  pushNews();
-  refreshTimer = setInterval(pushNews, Math.max(30, settings.refreshSeconds) * 1000);
-}
-
-// ---------- Hotkey ----------
-function registerHotkey() {
-  globalShortcut.unregisterAll();
-  if (settings.hotkey) {
-    try {
-      globalShortcut.register(settings.hotkey, () => setVisible(!isVisible));
-    } catch (e) {
-      console.error('Bad hotkey:', settings.hotkey, e.message);
-    }
-  }
-}
-
-function pushConfig() {
-  if (tickerWin) tickerWin.webContents.send('config', settings);
-}
-
 // ---------- Launch at login ----------
 function applyLoginItem() {
-  // Only meaningful in a packaged .app; harmless (no-op-ish) in dev.
   if (!app.isPackaged) return;
   try {
     app.setLoginItemSettings({ openAtLogin: !!settings.openAtLogin, openAsHidden: false });
@@ -156,89 +190,112 @@ function applyLoginItem() {
   }
 }
 
-// ---------- IPC ----------
-ipcMain.handle('get-config', () => settings);
-ipcMain.handle('get-news', () => latestNews);
-ipcMain.handle('get-settings', () => settings);
-
-ipcMain.handle('save-settings', (_e, incoming) => {
-  // Changing the top/bottom choice re-pins the bar (drops any dragged position).
-  if (incoming && incoming.position !== settings.position) {
-    incoming.customPos = null;
-  }
-  settings = settingsStore.save(incoming);
-  applyTickerBounds();
-  pushConfig();
-  registerHotkey();
-  startRefreshLoop();
-  applyLoginItem();
-  updateTrayMenu();
-  return settings;
+// ---------- IPC: ticker windows ----------
+ipcMain.handle('get-config', (e) => {
+  const id = laneIdForSender(e.sender);
+  return id ? laneConfigForRenderer(laneById(id)) : null;
 });
-
+ipcMain.handle('get-news', (e) => {
+  const id = laneIdForSender(e.sender);
+  return id && laneState[id] ? (laneState[id].items || []) : [];
+});
 ipcMain.on('open-link', (_e, url) => {
   if (url && /^https?:\/\//.test(url)) shell.openExternal(url);
 });
-
-ipcMain.on('hide-ticker', () => setVisible(false));
-
+ipcMain.on('hide-ticker', (e) => { const id = laneIdForSender(e.sender); if (id) hideLane(id); });
 ipcMain.on('open-settings', () => createSettingsWindow());
-
-ipcMain.on('set-ignore', (_e, ignore) => {
-  if (tickerWin) tickerWin.setIgnoreMouseEvents(!!ignore, { forward: true });
+ipcMain.on('set-ignore', (e, ignore) => {
+  const id = laneIdForSender(e.sender);
+  const st = id && laneState[id];
+  if (st && st.win && !st.win.isDestroyed()) st.win.setIgnoreMouseEvents(!!ignore, { forward: true });
 });
 
-// ---------- Manual window drag (grab the red handle) ----------
-let dragOffset = null;
-let dragTimer = null;
-ipcMain.on('drag:start', () => {
-  if (!tickerWin) return;
+// ---------- IPC: settings window ----------
+ipcMain.handle('get-settings', () => settings);
+ipcMain.handle('save-settings', (_e, incoming) => {
+  // Flipping a lane's top/bottom choice re-pins it (drops any dragged position).
+  if (incoming && Array.isArray(incoming.lanes)) {
+    incoming.lanes.forEach(nl => {
+      const old = laneById(nl.id);
+      if (old && old.position !== nl.position) nl.customPos = null;
+    });
+  }
+  settings = settingsStore.save(incoming);
+  applyLanes();
+  applyLoginItem();
+  return settings;
+});
+ipcMain.handle('google:connect', async () => {
+  try {
+    const { refreshToken, email } = await calendar.connect(settings);
+    if (!refreshToken) throw new Error('לא התקבל refresh token — ודא ש-prompt=consent ושהאפליקציה ב-Production');
+    settings.google = { ...settings.google, refreshToken, email };
+    settings = settingsStore.save(settings);
+    const cal = laneById('calendar');
+    if (cal) refreshLane(cal);
+    applyLanes();
+    return { ok: true, email };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+});
+ipcMain.handle('google:disconnect', () => {
+  settings.google = { ...settings.google, refreshToken: '', email: '' };
+  settings = settingsStore.save(settings);
+  applyLanes();
+  return { ok: true };
+});
+
+// ---------- Manual per-lane drag (grab the coloured handle) ----------
+ipcMain.on('drag:start', (e) => {
+  const id = laneIdForSender(e.sender);
+  const st = id && laneState[id];
+  if (!st || !st.win) return;
   const cursor = screen.getCursorScreenPoint();
-  const [wx, wy] = tickerWin.getPosition();
-  dragOffset = { dx: cursor.x - wx, dy: cursor.y - wy };
-  if (dragTimer) clearInterval(dragTimer);
-  dragTimer = setInterval(() => {
-    if (!dragOffset || !tickerWin) return;
+  const [wx, wy] = st.win.getPosition();
+  st.dragOffset = { dx: cursor.x - wx, dy: cursor.y - wy };
+  if (st.dragTimer) clearInterval(st.dragTimer);
+  st.dragTimer = setInterval(() => {
+    if (!st.dragOffset || !st.win || st.win.isDestroyed()) return;
     const p = screen.getCursorScreenPoint();
-    tickerWin.setPosition(p.x - dragOffset.dx, p.y - dragOffset.dy);
+    st.win.setPosition(p.x - st.dragOffset.dx, p.y - st.dragOffset.dy);
   }, 16);
 });
-ipcMain.on('drag:end', () => {
-  dragOffset = null;
-  if (dragTimer) { clearInterval(dragTimer); dragTimer = null; }
-  // Persist where the user left the bar.
-  if (tickerWin) {
-    const [x, y] = tickerWin.getPosition();
-    settings.customPos = { x, y };
-    settings = settingsStore.save(settings);
+ipcMain.on('drag:end', (e) => {
+  const id = laneIdForSender(e.sender);
+  const st = id && laneState[id];
+  if (!st) return;
+  st.dragOffset = null;
+  if (st.dragTimer) { clearInterval(st.dragTimer); st.dragTimer = null; }
+  if (st.win && !st.win.isDestroyed()) {
+    const [x, y] = st.win.getPosition();
+    const lane = laneById(id);
+    if (lane) { lane.customPos = { x, y }; settings = settingsStore.save(settings); }
   }
 });
 
 // ---------- App lifecycle ----------
-// Prevent a second copy from opening a duplicate bar.
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on('second-instance', () => setVisible(true));
+  app.on('second-instance', () => enabledLanes().forEach(l => {
+    const st = laneState[l.id];
+    if (st && st.win && !st.win.isDestroyed()) st.win.showInactive();
+  }));
 }
 
 app.whenReady().then(() => {
   settings = settingsStore.load();
-  isVisible = settings.visible !== false;
-  if (app.dock) app.dock.hide(); // menu-bar style: keep out of the Dock
-  createTickerWindow();
+  if (app.dock) app.dock.hide();
   createTray();
-  registerHotkey();
-  startRefreshLoop();
+  enabledLanes().forEach(createLaneWindow);
+  registerHotkeys();
+  startLoops();
   applyLoginItem();
-  if (!isVisible) setVisible(false);
 });
 
-app.on('window-all-closed', (e) => {
-  // Keep running in the tray even with no windows.
-});
-
+app.on('window-all-closed', () => { /* stay alive in the tray */ });
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
-  if (refreshTimer) clearInterval(refreshTimer);
+  for (const id in laneState) if (laneState[id].timer) clearInterval(laneState[id].timer);
 });

@@ -5,127 +5,73 @@
 <style>
   :root {
     --bg: #f6f7f9; --card: #ffffff; --line: #e5e8ec; --text: #1c1f26;
-    --muted: #6b7280; --accent: #d81f2a; --accent-soft: #fdecec;
+    --muted: #6b7280; --accent: #2f6fed; --accent-soft: #eaf1ff;
   }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#15171c; --card:#1e2128; --line:#2c303a; --text:#eef1f6; --muted:#9aa2b1; --accent:#ff5a63; --accent-soft:#3a2226; }
+    :root { --bg:#15171c; --card:#1e2128; --line:#2c303a; --text:#eef1f6; --muted:#9aa2b1; --accent:#5b9dff; --accent-soft:#22314d; }
   }
   * { box-sizing: border-box; }
-  body {
-    margin: 0; font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-    background: var(--bg); color: var(--text); font-size: 14px; padding: 20px;
-  }
-  h1 { font-size: 18px; margin: 0 0 4px; }
-  .sub { color: var(--muted); font-size: 12.5px; margin-bottom: 18px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
-  .card h2 { font-size: 13px; text-transform: none; margin: 0 0 12px; color: var(--muted); font-weight: 600; letter-spacing: .2px; }
-  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 0; }
-  .row label { font-weight: 500; }
-  .hint { color: var(--muted); font-size: 12px; margin-top: 2px; }
-  select, input[type="text"], input[type="number"] {
-    font: inherit; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line);
-    background: var(--bg); color: var(--text); min-width: 130px;
-  }
-  input[type="range"] { width: 160px; }
-  .seg { display: inline-flex; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
-  .seg button { font: inherit; border: none; background: transparent; color: var(--text); padding: 7px 14px; cursor: pointer; }
-  .seg button.active { background: var(--accent); color: #fff; }
-  /* sources */
-  .src { display: flex; align-items: center; gap: 10px; padding: 8px; border: 1px solid var(--line); border-radius: 9px; margin-bottom: 8px; }
-  .src input[type="text"] { flex: 1; min-width: 0; }
-  .src .name { width: 140px; flex: none; }
-  .src .del { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px 8px; border-radius: 6px; }
-  .src .del:hover { background: var(--accent-soft); color: var(--accent); }
-  .addbtn { font: inherit; background: transparent; border: 1px dashed var(--line); color: var(--muted); padding: 8px; border-radius: 9px; width: 100%; cursor: pointer; }
-  .addbtn:hover { border-color: var(--accent); color: var(--accent); }
-  .toggle { position: relative; width: 42px; height: 24px; flex: none; }
-  .toggle input { opacity: 0; width: 0; height: 0; }
-  .slider { position: absolute; inset: 0; background: #c4c9d2; border-radius: 999px; transition: .2s; cursor: pointer; }
-  .slider::before { content: ""; position: absolute; width: 18px; height: 18px; right: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
-  .toggle input:checked + .slider { background: var(--accent); }
-  .toggle input:checked + .slider::before { transform: translateX(-18px); }
-  .footer { display: flex; gap: 10px; justify-content: flex-start; margin-top: 6px; }
-  .btn { font: inherit; padding: 9px 18px; border-radius: 9px; border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; font-weight: 600; }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .btn.primary:hover { filter: brightness(1.05); }
-  .saved { color: #1a9e57; font-size: 12.5px; align-self: center; opacity: 0; transition: opacity .2s; }
-  .saved.show { opacity: 1; }
-  .keyhint { font-size: 12px; color: var(--muted); }
-  code { background: var(--bg); padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); }
+  body { margin:0; font-family:-apple-system,"SF Pro Text","Helvetica Neue",Arial,sans-serif;
+    background:var(--bg); color:var(--text); font-size:14px; padding:20px; }
+  h1 { font-size:18px; margin:0 0 4px; }
+  .sub { color:var(--muted); font-size:12.5px; margin-bottom:18px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:14px; }
+  .lane-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .lane-head h2 { font-size:15px; margin:0; display:flex; align-items:center; gap:8px; }
+  .dotc { width:10px; height:10px; border-radius:50%; display:inline-block; }
+  .lane-body.off { opacity:.4; pointer-events:none; }
+  .row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:6px 0; }
+  .row label { font-weight:500; }
+  .hint { color:var(--muted); font-size:12px; margin-top:2px; }
+  select, input[type="text"], input[type="password"], input[type="number"] {
+    font:inherit; padding:7px 10px; border-radius:8px; border:1px solid var(--line);
+    background:var(--bg); color:var(--text); min-width:120px; }
+  input[type="range"] { width:150px; }
+  input[type="color"] { width:38px; height:28px; padding:0; border:1px solid var(--line); border-radius:6px; background:var(--bg); }
+  .seg { display:inline-flex; background:var(--bg); border:1px solid var(--line); border-radius:9px; overflow:hidden; }
+  .seg button { font:inherit; border:none; background:transparent; color:var(--text); padding:6px 13px; cursor:pointer; }
+  .seg button.active { background:var(--accent); color:#fff; }
+  .src { display:flex; align-items:center; gap:8px; padding:7px; border:1px solid var(--line); border-radius:9px; margin-bottom:7px; }
+  .src input[type="text"] { flex:1; min-width:0; }
+  .src .name { width:120px; flex:none; }
+  .src .del { background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:15px; padding:4px 7px; border-radius:6px; }
+  .src .del:hover { background:var(--accent-soft); color:var(--accent); }
+  .addbtn { font:inherit; background:transparent; border:1px dashed var(--line); color:var(--muted); padding:7px; border-radius:9px; width:100%; cursor:pointer; }
+  .addbtn:hover { border-color:var(--accent); color:var(--accent); }
+  .toggle { position:relative; width:42px; height:24px; flex:none; }
+  .toggle input { opacity:0; width:0; height:0; }
+  .slider { position:absolute; inset:0; background:#c4c9d2; border-radius:999px; transition:.2s; cursor:pointer; }
+  .slider::before { content:""; position:absolute; width:18px; height:18px; right:3px; top:3px; background:#fff; border-radius:50%; transition:.2s; }
+  .toggle input:checked + .slider { background:var(--accent); }
+  .toggle input:checked + .slider::before { transform:translateX(-18px); }
+  .footer { display:flex; gap:10px; align-items:center; margin-top:6px; position:sticky; bottom:0; padding-top:6px; }
+  .btn { font:inherit; padding:9px 18px; border-radius:9px; border:1px solid var(--line); background:var(--card); color:var(--text); cursor:pointer; font-weight:600; }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.primary:hover { filter:brightness(1.05); }
+  .btn.sm { padding:6px 12px; font-size:13px; }
+  .saved { color:#1a9e57; font-size:12.5px; opacity:0; transition:opacity .2s; }
+  .saved.show { opacity:1; }
+  .keyhint { font-size:12px; color:var(--muted); margin-top:4px; }
+  code { background:var(--bg); padding:1px 6px; border-radius:5px; border:1px solid var(--line); }
+  .gstatus { font-size:12.5px; margin-top:6px; }
+  .gstatus.ok { color:#1a9e57; }
+  .gstatus.err { color:#d64545; }
+  .glink { color:var(--accent); cursor:pointer; text-decoration:underline; }
+  .colors { display:flex; gap:16px; align-items:center; }
+  .colors .c { display:flex; align-items:center; gap:6px; }
 </style>
 </head>
 <body>
-  <h1>הגדרות פס מבזקים</h1>
-  <div class="sub">בחר מקורות, מיקום וסגנון. שינויים נכנסים לתוקף מיד עם שמירה.</div>
+  <h1>הגדרות</h1>
+  <div class="sub">כל שורה (חדשות / יומן) נשלטת בנפרד. שינויים נכנסים לתוקף מיד עם שמירה.</div>
+
+  <div id="lanes"></div>
 
   <div class="card">
-    <h2>מקורות חדשות (RSS)</h2>
-    <div id="sources"></div>
-    <button class="addbtn" id="add-src">＋ הוסף מקור</button>
-    <div class="hint">אפשר לכבות/להדליק כל מקור בלי למחוק אותו. הפס ממזג את כולם לפי זמן.</div>
-  </div>
-
-  <div class="card">
-    <h2>תצוגה</h2>
-    <div class="row">
-      <label>מיקום על המסך</label>
-      <div class="seg" id="seg-position">
-        <button data-v="top">למעלה</button>
-        <button data-v="bottom">למטה</button>
-      </div>
-    </div>
-    <div class="row">
-      <label>סגנון</label>
-      <div class="seg" id="seg-mode">
-        <button data-v="scroll">רץ</button>
-        <button data-v="fade">מתחלף</button>
-      </div>
-    </div>
-    <div class="row" id="row-speed">
-      <label>מהירות הריצה</label>
-      <input type="range" id="speed" min="20" max="160" step="5" />
-    </div>
-    <div class="row" id="row-fade">
-      <label>זמן לכל כותרת (שניות)</label>
-      <input type="number" id="fadeSeconds" min="2" max="30" step="1" />
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>עיצוב</h2>
-    <div class="row">
-      <label>גובה הפס</label>
-      <input type="number" id="height" min="18" max="80" step="1" />
-    </div>
-    <div class="row">
-      <label>גודל טקסט</label>
-      <input type="number" id="fontSize" min="8" max="24" step="1" />
-    </div>
-    <div class="row">
-      <label>שקיפות הרקע</label>
-      <input type="range" id="opacity" min="0.15" max="1" step="0.05" />
-    </div>
-    <div class="row">
-      <label>הצג שם מקור ושעה</label>
-      <span class="toggle"><input type="checkbox" id="showSource" /><span class="slider"></span></span>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>עדכון וקיצור מקלדת</h2>
-    <div class="row">
-      <label>תדירות רענון (שניות)</label>
-      <input type="number" id="refreshSeconds" min="30" max="1800" step="10" />
-    </div>
-    <div class="row">
-      <label>קיצור להסתרה/הצגה</label>
-      <input type="text" id="hotkey" placeholder="Command+Alt+N" />
-    </div>
     <div class="row">
       <label>הפעל אוטומטית בהדלקת המחשב</label>
       <span class="toggle"><input type="checkbox" id="openAtLogin" /><span class="slider"></span></span>
     </div>
-    <div class="keyhint">דוגמאות: <code>Command+Alt+N</code> · <code>Control+Shift+M</code>. Command=⌘, Alt=⌥.</div>
   </div>
 
   <div class="footer">
@@ -135,84 +81,191 @@
 
 <script>
   let s = null;
+  const el = id => document.getElementById(id);
+  const esc = v => String(v == null ? '' : v).replace(/"/g, '&quot;');
+  const escT = v => String(v == null ? '' : v).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  function rgbToHex(rgb){ const p=String(rgb||'17,19,24').split(',').map(n=>parseInt(n,10)||0); return '#'+p.slice(0,3).map(x=>x.toString(16).padStart(2,'0')).join(''); }
+  function hexToRgb(hex){ const m=String(hex||'#111318').replace('#',''); return [0,2,4].map(i=>parseInt(m.substr(i,2),16)||0).join(','); }
 
-  function el(id) { return document.getElementById(id); }
-
-  function renderSources() {
-    const wrap = el('sources');
-    wrap.innerHTML = '';
-    s.sources.forEach((src, i) => {
-      const div = document.createElement('div');
-      div.className = 'src';
-      div.innerHTML =
-        '<span class="toggle"><input type="checkbox" ' + (src.enabled ? 'checked' : '') + ' data-i="' + i + '" class="src-on"><span class="slider"></span></span>' +
-        '<input type="text" class="name src-name" data-i="' + i + '" value="' + escapeAttr(src.name) + '" placeholder="שם">' +
-        '<input type="text" class="src-url" data-i="' + i + '" value="' + escapeAttr(src.url) + '" placeholder="https://…/rss.xml">' +
-        '<button class="del" data-i="' + i + '" title="מחק">🗑</button>';
-      wrap.appendChild(div);
-    });
-    wrap.querySelectorAll('.src-on').forEach(c => c.addEventListener('change', e => { s.sources[e.target.dataset.i].enabled = e.target.checked; }));
-    wrap.querySelectorAll('.src-name').forEach(c => c.addEventListener('input', e => { s.sources[e.target.dataset.i].name = e.target.value; }));
-    wrap.querySelectorAll('.src-url').forEach(c => c.addEventListener('input', e => { s.sources[e.target.dataset.i].url = e.target.value; }));
-    wrap.querySelectorAll('.del').forEach(b => b.addEventListener('click', e => { s.sources.splice(e.target.dataset.i, 1); renderSources(); }));
+  function laneCard(lane) {
+    const isRss = lane.kind === 'rss';
+    const isCal = lane.kind === 'calendar';
+    const modeScroll = lane.mode === 'scroll';
+    return `
+    <div class="card lane" data-id="${esc(lane.id)}">
+      <div class="lane-head">
+        <h2><span class="dotc" style="background:${esc(lane.badgeBg)}"></span>${escT(lane.title)}</h2>
+        <span class="toggle"><input type="checkbox" class="f-enabled" ${lane.enabled?'checked':''}><span class="slider"></span></span>
+      </div>
+      <div class="lane-body ${lane.enabled?'':'off'}">
+        <div class="row"><label>מיקום על המסך</label>
+          <div class="seg f-position">
+            <button data-v="top" class="${lane.position==='top'?'active':''}">למעלה</button>
+            <button data-v="bottom" class="${lane.position==='bottom'?'active':''}">למטה</button>
+          </div>
+        </div>
+        <div class="row"><label>סגנון</label>
+          <div class="seg f-mode">
+            <button data-v="scroll" class="${modeScroll?'active':''}">רץ</button>
+            <button data-v="fade" class="${!modeScroll?'active':''}">מתחלף</button>
+          </div>
+        </div>
+        <div class="row row-speed" style="${modeScroll?'':'display:none'}"><label>מהירות הריצה</label>
+          <input type="range" class="f-speed" min="20" max="160" step="5" value="${esc(lane.speed)}"></div>
+        <div class="row row-fade" style="${modeScroll?'display:none':''}"><label>זמן לכל פריט (שניות)</label>
+          <input type="number" class="f-fadeSeconds" min="2" max="30" step="1" value="${esc(lane.fadeSeconds)}"></div>
+        <div class="row"><label>גובה השורה</label>
+          <input type="number" class="f-height" min="14" max="80" step="1" value="${esc(lane.height)}"></div>
+        <div class="row"><label>גודל טקסט</label>
+          <input type="number" class="f-fontSize" min="8" max="24" step="1" value="${esc(lane.fontSize)}"></div>
+        <div class="row"><label>שקיפות הרקע</label>
+          <input type="range" class="f-opacity" min="0.15" max="1" step="0.05" value="${esc(lane.opacity)}"></div>
+        <div class="row"><label>צבעים</label>
+          <div class="colors">
+            <span class="c">רקע <input type="color" class="f-barColor" value="${esc(rgbToHex(lane.barRgb))}"></span>
+            <span class="c">תגית <input type="color" class="f-badgeColor" value="${esc(lane.badgeBg)}"></span>
+          </div>
+        </div>
+        <div class="row"><label>תדירות רענון (שניות)</label>
+          <input type="number" class="f-refreshSeconds" min="30" max="1800" step="10" value="${esc(lane.refreshSeconds)}"></div>
+        <div class="row"><label>קיצור הסתרה/הצגה</label>
+          <input type="text" class="f-hotkey" value="${esc(lane.hotkey)}" placeholder="Command+Alt+N"></div>
+        ${isRss ? `
+          <div style="margin-top:8px">
+            <div class="hint" style="margin-bottom:6px">מקורות (RSS) — כבה/הדלק בלי למחוק:</div>
+            <div class="src-list"></div>
+            <button class="addbtn f-addsrc">＋ הוסף מקור</button>
+          </div>` : ''}
+        ${isCal ? `
+          <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--line)">
+            <div class="row"><label>Google Client ID</label>
+              <input type="text" class="f-gclient" style="min-width:220px" value="${esc(s.google.clientId)}" placeholder="…apps.googleusercontent.com"></div>
+            <div class="row"><label>Google Client Secret</label>
+              <input type="password" class="f-gsecret" style="min-width:220px" value="${esc(s.google.clientSecret)}" placeholder="GOCSPX-…"></div>
+            <div class="row">
+              <button class="btn sm primary g-connect">חבר יומן Google</button>
+              <span class="gstatus"></span>
+            </div>
+            <div class="keyhint">צריך פעם אחת: יוצרים "Desktop app" ב-Google Cloud. אני אלווה אותך.</div>
+          </div>` : ''}
+      </div>
+    </div>`;
   }
 
-  function setSeg(groupId, value) {
-    document.querySelectorAll('#' + groupId + ' button').forEach(b => {
-      b.classList.toggle('active', b.dataset.v === value);
-    });
-  }
-
-  function syncModeRows() {
-    const isScroll = s.mode === 'scroll';
-    el('row-speed').style.display = isScroll ? 'flex' : 'none';
-    el('row-fade').style.display = isScroll ? 'none' : 'flex';
-  }
-
-  function fill() {
-    renderSources();
-    setSeg('seg-position', s.position);
-    setSeg('seg-mode', s.mode);
-    el('speed').value = s.speed;
-    el('fadeSeconds').value = s.fadeSeconds;
-    el('height').value = s.height;
-    el('fontSize').value = s.fontSize;
-    el('opacity').value = s.opacity;
-    el('showSource').checked = !!s.showSource;
-    el('refreshSeconds').value = s.refreshSeconds;
-    el('hotkey').value = s.hotkey;
+  function renderLanes() {
+    el('lanes').innerHTML = s.lanes.map(laneCard).join('');
+    s.lanes.forEach(lane => wireLane(lane));
     el('openAtLogin').checked = !!s.openAtLogin;
-    syncModeRows();
   }
 
-  document.getElementById('seg-position').addEventListener('click', e => {
-    if (e.target.dataset.v) { s.position = e.target.dataset.v; setSeg('seg-position', s.position); }
-  });
-  document.getElementById('seg-mode').addEventListener('click', e => {
-    if (e.target.dataset.v) { s.mode = e.target.dataset.v; setSeg('seg-mode', s.mode); syncModeRows(); }
-  });
-  el('add-src').addEventListener('click', () => { s.sources.push({ name: 'מקור חדש', url: '', enabled: true }); renderSources(); });
+  function laneEl(id) { return document.querySelector('.lane[data-id="' + CSS.escape(id) + '"]'); }
+
+  function wireLane(lane) {
+    const card = laneEl(lane.id);
+    // enable toggle
+    card.querySelector('.f-enabled').addEventListener('change', e => {
+      lane.enabled = e.target.checked;
+      card.querySelector('.lane-body').classList.toggle('off', !lane.enabled);
+    });
+    // position / mode segs
+    card.querySelector('.f-position').addEventListener('click', e => {
+      if (!e.target.dataset.v) return;
+      lane.position = e.target.dataset.v;
+      card.querySelectorAll('.f-position button').forEach(b => b.classList.toggle('active', b.dataset.v === lane.position));
+    });
+    card.querySelector('.f-mode').addEventListener('click', e => {
+      if (!e.target.dataset.v) return;
+      lane.mode = e.target.dataset.v;
+      card.querySelectorAll('.f-mode button').forEach(b => b.classList.toggle('active', b.dataset.v === lane.mode));
+      card.querySelector('.row-speed').style.display = lane.mode === 'scroll' ? '' : 'none';
+      card.querySelector('.row-fade').style.display = lane.mode === 'scroll' ? 'none' : '';
+    });
+    // badge color live preview on the header dot
+    card.querySelector('.f-badgeColor').addEventListener('input', e => {
+      card.querySelector('.dotc').style.background = e.target.value;
+    });
+    if (lane.kind === 'rss') { renderSources(lane); }
+    if (lane.kind === 'calendar') {
+      updateGStatus(card);
+      card.querySelector('.g-connect').addEventListener('click', () => connectGoogle(lane, card));
+    }
+  }
+
+  function renderSources(lane) {
+    lane.sources = lane.sources || [];
+    const wrap = laneEl(lane.id).querySelector('.src-list');
+    wrap.innerHTML = lane.sources.map((src, i) => `
+      <div class="src">
+        <span class="toggle"><input type="checkbox" class="s-on" data-i="${i}" ${src.enabled?'checked':''}><span class="slider"></span></span>
+        <input type="text" class="name s-name" data-i="${i}" value="${esc(src.name)}" placeholder="שם">
+        <input type="text" class="s-url" data-i="${i}" value="${esc(src.url)}" placeholder="https://…/rss.xml">
+        <button class="del s-del" data-i="${i}" title="מחק">🗑</button>
+      </div>`).join('');
+    wrap.querySelectorAll('.s-on').forEach(c => c.addEventListener('change', e => lane.sources[e.target.dataset.i].enabled = e.target.checked));
+    wrap.querySelectorAll('.s-name').forEach(c => c.addEventListener('input', e => lane.sources[e.target.dataset.i].name = e.target.value));
+    wrap.querySelectorAll('.s-url').forEach(c => c.addEventListener('input', e => lane.sources[e.target.dataset.i].url = e.target.value));
+    wrap.querySelectorAll('.s-del').forEach(b => b.addEventListener('click', e => { lane.sources.splice(e.target.dataset.i, 1); renderSources(lane); }));
+    laneEl(lane.id).querySelector('.f-addsrc').onclick = () => { lane.sources.push({ name:'מקור חדש', url:'', enabled:true }); renderSources(lane); };
+  }
+
+  function updateGStatus(card) {
+    const st = card.querySelector('.gstatus');
+    if (s.google.refreshToken) {
+      st.className = 'gstatus ok';
+      st.innerHTML = '✅ מחובר' + (s.google.email ? ' (' + escT(s.google.email) + ')' : '') + ' · <span class="glink g-disc">נתק</span>';
+      const disc = st.querySelector('.g-disc');
+      if (disc) disc.addEventListener('click', async () => { await window.api.disconnectGoogle(); s.google.refreshToken=''; s.google.email=''; updateGStatus(card); });
+    } else {
+      st.className = 'gstatus';
+      st.textContent = 'לא מחובר';
+    }
+  }
+
+  async function connectGoogle(lane, card) {
+    const st = card.querySelector('.gstatus');
+    s.google.clientId = card.querySelector('.f-gclient').value.trim();
+    s.google.clientSecret = card.querySelector('.f-gsecret').value.trim();
+    if (!s.google.clientId || !s.google.clientSecret) { st.className='gstatus err'; st.textContent='חסרים Client ID / Secret'; return; }
+    st.className = 'gstatus'; st.textContent = 'פותח דפדפן להתחברות…';
+    // Persist client id/secret first so the main-process connect flow can use them.
+    await window.api.saveSettings(collect());
+    const res = await window.api.connectGoogle();
+    if (res && res.ok) { s.google.refreshToken = 'connected'; s.google.email = res.email || ''; updateGStatus(card); }
+    else { st.className='gstatus err'; st.textContent = 'שגיאה: ' + (res && res.error ? res.error : 'לא ידועה'); }
+  }
+
+  // Read every field from the DOM back into `s`.
+  function collect() {
+    s.lanes.forEach(lane => {
+      const card = laneEl(lane.id);
+      if (!card) return;
+      lane.enabled = card.querySelector('.f-enabled').checked;
+      lane.speed = +card.querySelector('.f-speed').value;
+      lane.fadeSeconds = +card.querySelector('.f-fadeSeconds').value;
+      lane.height = +card.querySelector('.f-height').value;
+      lane.fontSize = +card.querySelector('.f-fontSize').value;
+      lane.opacity = +card.querySelector('.f-opacity').value;
+      lane.refreshSeconds = +card.querySelector('.f-refreshSeconds').value;
+      lane.hotkey = card.querySelector('.f-hotkey').value.trim();
+      lane.barRgb = hexToRgb(card.querySelector('.f-barColor').value);
+      lane.badgeBg = card.querySelector('.f-badgeColor').value;
+      if (lane.kind === 'rss') lane.sources = (lane.sources || []).filter(x => x.url && x.url.trim());
+      if (lane.kind === 'calendar') {
+        s.google.clientId = card.querySelector('.f-gclient').value.trim();
+        s.google.clientSecret = card.querySelector('.f-gsecret').value.trim();
+      }
+    });
+    s.openAtLogin = el('openAtLogin').checked;
+    return s;
+  }
 
   el('save').addEventListener('click', async () => {
-    s.speed = +el('speed').value;
-    s.fadeSeconds = +el('fadeSeconds').value;
-    s.height = +el('height').value;
-    s.fontSize = +el('fontSize').value;
-    s.opacity = +el('opacity').value;
-    s.showSource = el('showSource').checked;
-    s.refreshSeconds = +el('refreshSeconds').value;
-    s.hotkey = el('hotkey').value.trim();
-    s.openAtLogin = el('openAtLogin').checked;
-    s.sources = s.sources.filter(x => x.url && x.url.trim());
-    await window.api.saveSettings(s);
-    const saved = el('saved'); saved.classList.add('show');
-    setTimeout(() => saved.classList.remove('show'), 1600);
-    renderSources();
+    await window.api.saveSettings(collect());
+    const sv = el('saved'); sv.classList.add('show');
+    setTimeout(() => sv.classList.remove('show'), 1600);
   });
 
-  function escapeAttr(v) { return String(v == null ? '' : v).replace(/"/g, '&quot;'); }
-
-  window.api.getSettings().then(cfg => { s = cfg; fill(); });
+  window.api.getSettings().then(cfg => { s = cfg; if (!s.google) s.google = { clientId:'', clientSecret:'', refreshToken:'', email:'' }; renderLanes(); });
 </script>
 </body>
 </html>

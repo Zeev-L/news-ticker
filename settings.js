@@ -4,29 +4,42 @@ const fs = require('fs');
 
 const SETTINGS_PATH = path.join(app.getPath('userData'), 'settings.json');
 
+// Default RSS sources for the news lane.
+const DEFAULT_SOURCES = [
+  { name: 'ynet מבזקים', url: 'https://www.ynet.co.il/Integration/StoryRss1854.xml', enabled: true },
+  { name: 'וואלה', url: 'https://rss.walla.co.il/feed/1', enabled: true },
+  { name: 'ישראל היום', url: 'https://www.israelhayom.co.il/rss.xml', enabled: true },
+  { name: 'הארץ', url: 'https://www.haaretz.co.il/srv/htz---all-articles', enabled: true },
+  { name: 'גלובס', url: 'https://www.globes.co.il/webservice/rss/rssfeeder.asmx/FeederNode?iID=2', enabled: true },
+  { name: 'N12', url: 'https://rcs.mako.co.il/rss/news-israel.xml', enabled: true }
+];
+
+// A lane = one bar. Common display fields + kind-specific fields.
+const NEWS_LANE = {
+  id: 'news', kind: 'rss', title: 'מבזקים', enabled: true,
+  position: 'top', mode: 'scroll', speed: 60, fadeSeconds: 6,
+  height: 20, fontSize: 11, opacity: 0.55, refreshSeconds: 90,
+  hotkey: 'Command+Alt+N', customPos: null,
+  barRgb: '17,19,24', badgeBg: '#d81f2a',
+  badgeMode: 'word', badgeWord: 'מבזק', showMeta: true,
+  emptyText: 'טוען מבזקים…',
+  sources: DEFAULT_SOURCES, maxItems: 50
+};
+
+const CALENDAR_LANE = {
+  id: 'calendar', kind: 'calendar', title: 'יומן', enabled: true,
+  position: 'top', mode: 'scroll', speed: 45, fadeSeconds: 8,
+  height: 20, fontSize: 11, opacity: 0.6, refreshSeconds: 60,
+  hotkey: 'Command+Alt+C', customPos: null,
+  barRgb: '10,42,58', badgeBg: '#1f7ae0',
+  badgeMode: 'time', showMeta: true,
+  emptyText: 'אין פגישות נוספות היום'
+};
+
 const DEFAULTS = {
-  sources: [
-    { name: 'ynet מבזקים', url: 'https://www.ynet.co.il/Integration/StoryRss1854.xml', enabled: true },
-    { name: 'וואלה', url: 'https://rss.walla.co.il/feed/1', enabled: true },
-    { name: 'ישראל היום', url: 'https://www.israelhayom.co.il/rss.xml', enabled: true },
-    { name: 'הארץ', url: 'https://www.haaretz.co.il/srv/htz---all-articles', enabled: true },
-    { name: 'גלובס', url: 'https://www.globes.co.il/webservice/rss/rssfeeder.asmx/FeederNode?iID=2', enabled: true },
-    { name: 'N12', url: 'https://rcs.mako.co.il/rss/news-israel.xml', enabled: true }
-  ],
-  position: 'top',        // 'top' | 'bottom'
-  mode: 'scroll',         // 'scroll' | 'fade'
-  speed: 60,              // scroll speed, px per second
-  fadeSeconds: 6,         // seconds per headline in fade mode
-  refreshSeconds: 90,     // how often to re-fetch feeds
-  hotkey: 'Command+Alt+N',
-  height: 20,
-  fontSize: 11,
-  opacity: 0.55,
-  maxItems: 50,
-  showSource: true,
-  visible: true,
-  openAtLogin: false,
-  customPos: null   // {x, y} once the user drags the bar; null = follow position (top/bottom)
+  lanes: [NEWS_LANE, CALENDAR_LANE],
+  google: { clientId: '', clientSecret: '', refreshToken: '', email: '' },
+  openAtLogin: false
 };
 
 function deepMerge(base, override) {
@@ -45,18 +58,58 @@ function deepMerge(base, override) {
   return out;
 }
 
+// Merge lanes by id: default lanes fill missing fields; user lanes win; keep order
+// (defaults first, then any user-only lanes).
+function mergeLanes(defaultLanes, userLanes) {
+  const byId = {};
+  defaultLanes.forEach(l => { byId[l.id] = { ...l }; });
+  (userLanes || []).forEach(u => {
+    if (u && u.id) byId[u.id] = byId[u.id] ? deepMerge(byId[u.id], u) : u;
+  });
+  const order = defaultLanes.map(l => l.id);
+  (userLanes || []).forEach(u => { if (u && u.id && !order.includes(u.id)) order.push(u.id); });
+  return order.map(id => byId[id]);
+}
+
+// Convert the old flat (single-bar) schema into the new lanes schema.
+function migrate(parsed) {
+  if (!parsed || parsed.lanes) return parsed || {};
+  if (parsed.sources) {
+    const news = {
+      id: 'news', kind: 'rss', title: 'מבזקים', enabled: true,
+      position: parsed.position || 'top', mode: parsed.mode || 'scroll',
+      speed: parsed.speed, fadeSeconds: parsed.fadeSeconds,
+      height: parsed.height, fontSize: parsed.fontSize, opacity: parsed.opacity,
+      refreshSeconds: parsed.refreshSeconds, hotkey: parsed.hotkey || 'Command+Alt+N',
+      customPos: parsed.customPos || null,
+      barRgb: '17,19,24', badgeBg: '#d81f2a',
+      badgeMode: 'word', badgeWord: 'מבזק',
+      showMeta: parsed.showSource !== false,
+      sources: parsed.sources, maxItems: parsed.maxItems || 50
+    };
+    return { lanes: [news], google: { clientId: '', clientSecret: '', refreshToken: '', email: '' }, openAtLogin: !!parsed.openAtLogin };
+  }
+  return parsed;
+}
+
+function normalize(parsed) {
+  const migrated = migrate(parsed);
+  const merged = deepMerge(DEFAULTS, migrated);
+  merged.lanes = mergeLanes(DEFAULTS.lanes, migrated.lanes);
+  return merged;
+}
+
 function load() {
   try {
     const raw = fs.readFileSync(SETTINGS_PATH, 'utf8');
-    const parsed = JSON.parse(raw);
-    return deepMerge(DEFAULTS, parsed);
+    return normalize(JSON.parse(raw));
   } catch (e) {
-    return { ...DEFAULTS };
+    return normalize({});
   }
 }
 
 function save(settings) {
-  const merged = deepMerge(DEFAULTS, settings);
+  const merged = normalize(settings);
   try {
     fs.writeFileSync(SETTINGS_PATH, JSON.stringify(merged, null, 2), 'utf8');
   } catch (e) {
