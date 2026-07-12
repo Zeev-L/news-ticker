@@ -17,5 +17,6 @@ contextBridge.exposeInMainWorld('api', {
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (s) => ipcRenderer.invoke('save-settings', s),
   connectGoogle: () => ipcRenderer.invoke('google:connect'),
-  disconnectGoogle: () => ipcRenderer.invoke('google:disconnect')
+  disconnectGoogle: () => ipcRenderer.invoke('google:disconnect'),
+  googleCalendars: () => ipcRenderer.invoke('google:calendars')
 });

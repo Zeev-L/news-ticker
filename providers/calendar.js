@@ -13,6 +13,26 @@ function fmtTime(ts) {
   return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
 }
 
+function fmtRange(startMs, endMs) {
+  if (!endMs || endMs <= startMs) return fmtTime(startMs);
+  return fmtTime(startMs) + '–' + fmtTime(endMs);
+}
+
+// List the user's calendars (for the settings picker): id, name, default colour.
+async function listCalendars(settings) {
+  if (!isConnected(settings)) return [];
+  const auth = client(settings);
+  auth.setCredentials({ refresh_token: settings.google.refreshToken });
+  const cal = google.calendar({ version: 'v3', auth });
+  const list = await cal.calendarList.list({ minAccessRole: 'reader' });
+  return (list.data.items || []).map(c => ({
+    id: c.id,
+    name: c.summaryOverride || c.summary || c.id,
+    color: c.backgroundColor || '#1f7ae0',
+    primary: !!c.primary
+  }));
+}
+
 function isConnected(settings) {
   const g = settings.google || {};
   return !!(g.clientId && g.clientSecret && g.refreshToken);
@@ -36,7 +56,7 @@ function meetingLink(ev) {
   return ev.htmlLink || '';
 }
 
-// Returns normalized items for the ticker: { title, meta: [], badge, ts, action }
+// Returns normalized items for the ticker: { title, meta: [], badge, ts, action, color }
 async function fetch(lane, settings) {
   if (!isConnected(settings)) return [];
   const auth = client(settings);
@@ -47,15 +67,29 @@ async function fetch(lane, settings) {
   const endOfDay = new Date();
   endOfDay.setHours(23, 59, 59, 999);
 
-  // Gather across ALL the user's calendars (work, personal, family…), not just primary.
-  let calendarIds = ['primary'];
+  // Calendar metadata (names + default colours) for anything not yet configured.
+  const meta = {};
   try {
     const list = await cal.calendarList.list({ minAccessRole: 'reader' });
-    calendarIds = (list.data.items || [])
-      .filter(c => c.selected !== false && !/#holiday@/.test(c.id)) // skip holiday calendars
-      .map(c => c.id);
-    if (!calendarIds.length) calendarIds = ['primary'];
-  } catch (e) { /* fall back to primary */ }
+    (list.data.items || []).forEach(c => { meta[c.id] = { name: c.summary, color: c.backgroundColor }; });
+  } catch (e) { /* fall back below */ }
+
+  // Which calendars to include + their colours. If the user has configured calendars
+  // in settings, honour their enabled/colour choices; otherwise include all (minus holidays).
+  const configured = Array.isArray(lane.calendars) ? lane.calendars : [];
+  let calendarIds;
+  if (configured.length) {
+    calendarIds = configured.filter(c => c.enabled !== false).map(c => c.id);
+  } else {
+    calendarIds = Object.keys(meta).filter(id => !/#holiday@/.test(id));
+  }
+  if (!calendarIds.length && !configured.length) calendarIds = ['primary'];
+
+  const colorFor = (id) => {
+    const c = configured.find(x => x.id === id);
+    if (c && c.color) return c.color;
+    return (meta[id] && meta[id].color) || lane.badgeBg || '#1f7ae0';
+  };
 
   // timeMin filters by an event's END time, so this yields events that are
   // in-progress or upcoming today (past ones drop off automatically).
@@ -67,34 +101,36 @@ async function fetch(lane, settings) {
       singleEvents: true,
       orderBy: 'startTime',
       maxResults: 20
-    }).then(r => r.data.items || []).catch(() => [])
+    }).then(r => (r.data.items || []).map(ev => ({ ev, color: colorFor(id) }))).catch(() => [])
   ));
 
   const seen = new Set();
-  const events = perCal.flat().filter(ev => {
+  const rows = perCal.flat().filter(({ ev }) => {
     const key = ev.id || (ev.summary + (ev.start && ev.start.dateTime));
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
 
-  return events
-    .filter(ev => ev.start && ev.start.dateTime && ev.status !== 'cancelled') // timed events only
-    .filter(ev => !(ev.attendees || []).some(a => a.self && a.responseStatus === 'declined')) // hide events you declined
-    .sort((a, b) => Date.parse(a.start.dateTime) - Date.parse(b.start.dateTime))
-    .map(ev => {
+  return rows
+    .filter(({ ev }) => ev.start && ev.start.dateTime && ev.status !== 'cancelled') // timed events only
+    .filter(({ ev }) => !(ev.attendees || []).some(a => a.self && a.responseStatus === 'declined')) // hide declined
+    .sort((a, b) => Date.parse(a.ev.start.dateTime) - Date.parse(b.ev.start.dateTime))
+    .map(({ ev, color }) => {
       const startMs = Date.parse(ev.start.dateTime);
+      const endMs = ev.end && ev.end.dateTime ? Date.parse(ev.end.dateTime) : 0;
       const attendees = (ev.attendees || []).filter(a => !a.self && !a.resource);
       const names = attendees.slice(0, 2).map(a => a.displayName || a.email).filter(Boolean);
-      const meta = [];
-      if (names.length) meta.push(names.join(', '));
-      if (ev.location) meta.push(ev.location);
+      const meta2 = [];
+      if (names.length) meta2.push(names.join(', '));
+      if (ev.location) meta2.push(ev.location);
       return {
         title: ev.summary || '(ללא כותרת)',
-        meta,
-        badge: fmtTime(startMs),
+        meta: meta2,
+        badge: fmtRange(startMs, endMs),
         ts: startMs,
-        action: meetingLink(ev)
+        action: meetingLink(ev),
+        color
       };
     });
 }
@@ -160,4 +196,4 @@ function connect(settings) {
   });
 }
 
-module.exports = { fetch, connect, isConnected };
+module.exports = { fetch, connect, isConnected, listCalendars };

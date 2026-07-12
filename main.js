@@ -245,6 +245,10 @@ ipcMain.handle('google:disconnect', () => {
   applyLanes();
   return { ok: true };
 });
+ipcMain.handle('google:calendars', async () => {
+  try { return { ok: true, calendars: await calendar.listCalendars(settings) }; }
+  catch (e) { return { ok: false, error: e.message, calendars: [] }; }
+});
 
 // ---------- Manual per-lane drag (grab the coloured handle) ----------
 ipcMain.on('drag:start', (e) => {

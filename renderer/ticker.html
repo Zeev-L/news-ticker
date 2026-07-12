@@ -153,7 +153,10 @@
       const el = document.createElement('div');
       el.className = 'item';
       const parts = [];
-      if (n.badge) parts.push('<span class="badge">' + escapeHtml(n.badge) + '</span>');
+      if (n.badge) {
+        const bstyle = n.color ? ' style="background:' + escapeHtml(n.color) + '"' : '';
+        parts.push('<span class="badge"' + bstyle + '>' + escapeHtml(n.badge) + '</span>');
+      }
       parts.push('<span class="title" dir="rtl">' + escapeHtml(n.title) + '</span>');
       const metaBits = Array.isArray(n.meta) ? n.meta.filter(Boolean) : [];
       if (metaBits.length) parts.push('<span class="meta">' + escapeHtml(metaBits.join(' · ')) + '</span>');
@@ -226,7 +229,9 @@
     const holder = fade.querySelector('.fitem');
     if (!holder) return;
     const n = news[fadeIdx % news.length];
-    holder.querySelector('.fbadge').textContent = n.badge || '';
+    const fb = holder.querySelector('.fbadge');
+    fb.textContent = n.badge || '';
+    fb.style.background = n.color || '';
     holder.querySelector('.ttl').textContent = n.title;
     const metaBits = Array.isArray(n.meta) ? n.meta.filter(Boolean) : [];
     holder.querySelector('.fmeta').textContent = metaBits.join(' · ');

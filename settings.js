@@ -33,7 +33,8 @@ const CALENDAR_LANE = {
   hotkey: 'Command+Alt+C', customPos: null,
   barRgb: '10,42,58', badgeBg: '#1f7ae0',
   badgeMode: 'time', showMeta: true,
-  emptyText: 'אין פגישות נוספות היום'
+  emptyText: 'אין פגישות נוספות היום',
+  calendars: []   // [{ id, name, enabled, color }] — filled from Google, editable in settings
 };
 
 const DEFAULTS = {

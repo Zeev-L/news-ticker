@@ -12,13 +12,17 @@
   }
   * { box-sizing: border-box; }
   body { margin:0; font-family:-apple-system,"SF Pro Text","Helvetica Neue",Arial,sans-serif;
-    background:var(--bg); color:var(--text); font-size:14px; padding:20px; }
-  h1 { font-size:18px; margin:0 0 4px; }
-  .sub { color:var(--muted); font-size:12.5px; margin-bottom:18px; }
+    background:var(--bg); color:var(--text); font-size:14px; padding:20px 20px 76px; }
+  h1 { font-size:18px; margin:0 0 12px; }
+  .tabs { display:flex; gap:2px; margin-bottom:16px; border-bottom:1px solid var(--line); }
+  .tab { font:inherit; border:none; background:transparent; color:var(--muted); padding:9px 16px; cursor:pointer;
+    border-bottom:2px solid transparent; font-weight:600; display:flex; align-items:center; gap:7px; }
+  .tab .dotc { width:9px; height:9px; border-radius:50%; }
+  .tab.active { color:var(--text); border-bottom-color:var(--accent); }
+  .panel.hidden { display:none; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:14px; }
   .lane-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
-  .lane-head h2 { font-size:15px; margin:0; display:flex; align-items:center; gap:8px; }
-  .dotc { width:10px; height:10px; border-radius:50%; display:inline-block; }
+  .lane-head h2 { font-size:15px; margin:0; }
   .lane-body.off { opacity:.4; pointer-events:none; }
   .row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:6px 0; }
   .row label { font-weight:500; }
@@ -27,7 +31,7 @@
     font:inherit; padding:7px 10px; border-radius:8px; border:1px solid var(--line);
     background:var(--bg); color:var(--text); min-width:120px; }
   input[type="range"] { width:150px; }
-  input[type="color"] { width:38px; height:28px; padding:0; border:1px solid var(--line); border-radius:6px; background:var(--bg); }
+  input[type="color"] { width:34px; height:26px; padding:0; border:1px solid var(--line); border-radius:6px; background:var(--bg); flex:none; }
   .seg { display:inline-flex; background:var(--bg); border:1px solid var(--line); border-radius:9px; overflow:hidden; }
   .seg button { font:inherit; border:none; background:transparent; color:var(--text); padding:6px 13px; cursor:pointer; }
   .seg button.active { background:var(--accent); color:#fff; }
@@ -36,6 +40,7 @@
   .src .name { width:120px; flex:none; }
   .src .del { background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:15px; padding:4px 7px; border-radius:6px; }
   .src .del:hover { background:var(--accent-soft); color:var(--accent); }
+  .cal-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .addbtn { font:inherit; background:transparent; border:1px dashed var(--line); color:var(--muted); padding:7px; border-radius:9px; width:100%; cursor:pointer; }
   .addbtn:hover { border-color:var(--accent); color:var(--accent); }
   .toggle { position:relative; width:42px; height:24px; flex:none; }
@@ -44,7 +49,8 @@
   .slider::before { content:""; position:absolute; width:18px; height:18px; right:3px; top:3px; background:#fff; border-radius:50%; transition:.2s; }
   .toggle input:checked + .slider { background:var(--accent); }
   .toggle input:checked + .slider::before { transform:translateX(-18px); }
-  .footer { display:flex; gap:10px; align-items:center; margin-top:6px; position:sticky; bottom:0; padding-top:6px; }
+  .footer { position:fixed; bottom:0; right:0; left:0; display:flex; gap:10px; align-items:center;
+    padding:12px 20px; background:var(--bg); border-top:1px solid var(--line); }
   .btn { font:inherit; padding:9px 18px; border-radius:9px; border:1px solid var(--line); background:var(--card); color:var(--text); cursor:pointer; font-weight:600; }
   .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
   .btn.primary:hover { filter:brightness(1.05); }
@@ -59,20 +65,13 @@
   .glink { color:var(--accent); cursor:pointer; text-decoration:underline; }
   .colors { display:flex; gap:16px; align-items:center; }
   .colors .c { display:flex; align-items:center; gap:6px; }
+  .subttl { font-size:13px; font-weight:600; color:var(--muted); margin:12px 0 8px; }
 </style>
 </head>
 <body>
   <h1>הגדרות</h1>
-  <div class="sub">כל שורה (חדשות / יומן) נשלטת בנפרד. שינויים נכנסים לתוקף מיד עם שמירה.</div>
-
-  <div id="lanes"></div>
-
-  <div class="card">
-    <div class="row">
-      <label>הפעל אוטומטית בהדלקת המחשב</label>
-      <span class="toggle"><input type="checkbox" id="openAtLogin" /><span class="slider"></span></span>
-    </div>
-  </div>
+  <div class="tabs" id="tabs"></div>
+  <div id="panels"></div>
 
   <div class="footer">
     <button class="btn primary" id="save">שמור</button>
@@ -94,7 +93,7 @@
     return `
     <div class="card lane" data-id="${esc(lane.id)}">
       <div class="lane-head">
-        <h2><span class="dotc" style="background:${esc(lane.badgeBg)}"></span>${escT(lane.title)}</h2>
+        <h2>${escT(lane.title)}</h2>
         <span class="toggle"><input type="checkbox" class="f-enabled" ${lane.enabled?'checked':''}><span class="slider"></span></span>
       </div>
       <div class="lane-body ${lane.enabled?'':'off'}">
@@ -123,7 +122,7 @@
         <div class="row"><label>צבעים</label>
           <div class="colors">
             <span class="c">רקע <input type="color" class="f-barColor" value="${esc(rgbToHex(lane.barRgb))}"></span>
-            <span class="c">תגית <input type="color" class="f-badgeColor" value="${esc(lane.badgeBg)}"></span>
+            <span class="c">${isCal?'ברירת מחדל':'תגית'} <input type="color" class="f-badgeColor" value="${esc(lane.badgeBg)}"></span>
           </div>
         </div>
         <div class="row"><label>תדירות רענון (שניות)</label>
@@ -131,13 +130,11 @@
         <div class="row"><label>קיצור הסתרה/הצגה</label>
           <input type="text" class="f-hotkey" value="${esc(lane.hotkey)}" placeholder="Command+Alt+N"></div>
         ${isRss ? `
-          <div style="margin-top:8px">
-            <div class="hint" style="margin-bottom:6px">מקורות (RSS) — כבה/הדלק בלי למחוק:</div>
-            <div class="src-list"></div>
-            <button class="addbtn f-addsrc">＋ הוסף מקור</button>
-          </div>` : ''}
+          <div class="subttl">מקורות (RSS)</div>
+          <div class="src-list"></div>
+          <button class="addbtn f-addsrc">＋ הוסף מקור</button>` : ''}
         ${isCal ? `
-          <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--line)">
+          <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--line)">
             <div class="row"><label>Google Client ID</label>
               <input type="text" class="f-gclient" style="min-width:220px" value="${esc(s.google.clientId)}" placeholder="…apps.googleusercontent.com"></div>
             <div class="row"><label>Google Client Secret</label>
@@ -146,28 +143,48 @@
               <button class="btn sm primary g-connect">חבר יומן Google</button>
               <span class="gstatus"></span>
             </div>
-            <div class="keyhint">צריך פעם אחת: יוצרים "Desktop app" ב-Google Cloud. אני אלווה אותך.</div>
+            <div class="subttl">היומנים שלך — כבה/הדלק וקבע צבע לכל אחד</div>
+            <div class="cals"><div class="hint">מתחבר…</div></div>
           </div>` : ''}
       </div>
     </div>`;
   }
 
-  function renderLanes() {
-    el('lanes').innerHTML = s.lanes.map(laneCard).join('');
-    s.lanes.forEach(lane => wireLane(lane));
-    el('openAtLogin').checked = !!s.openAtLogin;
+  function generalCard() {
+    return `
+    <div class="card">
+      <div class="row">
+        <label>הפעל אוטומטית בהדלקת המחשב</label>
+        <span class="toggle"><input type="checkbox" id="openAtLogin" ${s.openAtLogin?'checked':''}><span class="slider"></span></span>
+      </div>
+    </div>`;
   }
 
   function laneEl(id) { return document.querySelector('.lane[data-id="' + CSS.escape(id) + '"]'); }
 
+  function render() {
+    const tabs = s.lanes.map(l => ({ id:l.id, title:l.title, color:l.badgeBg }))
+                        .concat([{ id:'__general', title:'כללי', color:null }]);
+    el('tabs').innerHTML = tabs.map((t,i) =>
+      `<button class="tab ${i===0?'active':''}" data-tab="${esc(t.id)}">${t.color?`<span class="dotc" style="background:${esc(t.color)}"></span>`:''}${escT(t.title)}</button>`
+    ).join('');
+    el('panels').innerHTML =
+      s.lanes.map((l,i) => `<div class="panel ${i===0?'':'hidden'}" data-panel="${esc(l.id)}">${laneCard(l)}</div>`).join('') +
+      `<div class="panel hidden" data-panel="__general">${generalCard()}</div>`;
+
+    el('tabs').querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
+      el('tabs').querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === b));
+      el('panels').querySelectorAll('.panel').forEach(p => p.classList.toggle('hidden', p.dataset.panel !== b.dataset.tab));
+    }));
+    s.lanes.forEach(wireLane);
+  }
+
   function wireLane(lane) {
     const card = laneEl(lane.id);
-    // enable toggle
     card.querySelector('.f-enabled').addEventListener('change', e => {
       lane.enabled = e.target.checked;
       card.querySelector('.lane-body').classList.toggle('off', !lane.enabled);
     });
-    // position / mode segs
     card.querySelector('.f-position').addEventListener('click', e => {
       if (!e.target.dataset.v) return;
       lane.position = e.target.dataset.v;
@@ -180,14 +197,16 @@
       card.querySelector('.row-speed').style.display = lane.mode === 'scroll' ? '' : 'none';
       card.querySelector('.row-fade').style.display = lane.mode === 'scroll' ? 'none' : '';
     });
-    // badge color live preview on the header dot
     card.querySelector('.f-badgeColor').addEventListener('input', e => {
-      card.querySelector('.dotc').style.background = e.target.value;
+      const tab = document.querySelector('.tab[data-tab="' + CSS.escape(lane.id) + '"] .dotc');
+      if (tab) tab.style.background = e.target.value;
     });
-    if (lane.kind === 'rss') { renderSources(lane); }
+    if (lane.kind === 'rss') renderSources(lane);
     if (lane.kind === 'calendar') {
       updateGStatus(card);
       card.querySelector('.g-connect').addEventListener('click', () => connectGoogle(lane, card));
+      if (s.google.refreshToken) loadCalendars(lane, card);
+      else card.querySelector('.cals').innerHTML = '<div class="hint">התחבר ליומן כדי לבחור יומנים.</div>';
     }
   }
 
@@ -208,16 +227,46 @@
     laneEl(lane.id).querySelector('.f-addsrc').onclick = () => { lane.sources.push({ name:'מקור חדש', url:'', enabled:true }); renderSources(lane); };
   }
 
+  async function loadCalendars(lane, card) {
+    const wrap = card.querySelector('.cals');
+    wrap.innerHTML = '<div class="hint">טוען יומנים…</div>';
+    const res = await window.api.googleCalendars();
+    if (!res || !res.ok) { wrap.innerHTML = '<div class="hint">שגיאה בטעינת יומנים.</div>'; return; }
+    const saved = Array.isArray(lane.calendars) ? lane.calendars : [];
+    lane.calendars = res.calendars.map(c => {
+      const prev = saved.find(x => x.id === c.id) || {};
+      return { id: c.id, name: c.name, enabled: prev.enabled !== false, color: prev.color || c.color };
+    });
+    renderCals(lane, card);
+  }
+
+  function renderCals(lane, card) {
+    const wrap = card.querySelector('.cals');
+    if (!lane.calendars.length) { wrap.innerHTML = '<div class="hint">לא נמצאו יומנים.</div>'; return; }
+    wrap.innerHTML = lane.calendars.map((c, i) => `
+      <div class="src">
+        <span class="toggle"><input type="checkbox" class="cal-on" data-i="${i}" ${c.enabled!==false?'checked':''}><span class="slider"></span></span>
+        <input type="color" class="cal-color" data-i="${i}" value="${esc(c.color)}">
+        <span class="cal-name">${escT(c.name)}</span>
+      </div>`).join('');
+    wrap.querySelectorAll('.cal-on').forEach(x => x.addEventListener('change', e => lane.calendars[e.target.dataset.i].enabled = e.target.checked));
+    wrap.querySelectorAll('.cal-color').forEach(x => x.addEventListener('input', e => lane.calendars[e.target.dataset.i].color = e.target.value));
+  }
+
   function updateGStatus(card) {
     const st = card.querySelector('.gstatus');
     if (s.google.refreshToken) {
       st.className = 'gstatus ok';
       st.innerHTML = '✅ מחובר' + (s.google.email ? ' (' + escT(s.google.email) + ')' : '') + ' · <span class="glink g-disc">נתק</span>';
       const disc = st.querySelector('.g-disc');
-      if (disc) disc.addEventListener('click', async () => { await window.api.disconnectGoogle(); s.google.refreshToken=''; s.google.email=''; updateGStatus(card); });
+      if (disc) disc.addEventListener('click', async () => {
+        await window.api.disconnectGoogle();
+        s.google.refreshToken = ''; s.google.email = '';
+        updateGStatus(card);
+        card.querySelector('.cals').innerHTML = '<div class="hint">התחבר ליומן כדי לבחור יומנים.</div>';
+      });
     } else {
-      st.className = 'gstatus';
-      st.textContent = 'לא מחובר';
+      st.className = 'gstatus'; st.textContent = 'לא מחובר';
     }
   }
 
@@ -227,14 +276,17 @@
     s.google.clientSecret = card.querySelector('.f-gsecret').value.trim();
     if (!s.google.clientId || !s.google.clientSecret) { st.className='gstatus err'; st.textContent='חסרים Client ID / Secret'; return; }
     st.className = 'gstatus'; st.textContent = 'פותח דפדפן להתחברות…';
-    // Persist client id/secret first so the main-process connect flow can use them.
     await window.api.saveSettings(collect());
     const res = await window.api.connectGoogle();
-    if (res && res.ok) { s.google.refreshToken = 'connected'; s.google.email = res.email || ''; updateGStatus(card); }
-    else { st.className='gstatus err'; st.textContent = 'שגיאה: ' + (res && res.error ? res.error : 'לא ידועה'); }
+    if (res && res.ok) {
+      s.google.refreshToken = 'connected'; s.google.email = res.email || '';
+      updateGStatus(card);
+      loadCalendars(lane, card);
+    } else {
+      st.className='gstatus err'; st.textContent = 'שגיאה: ' + (res && res.error ? res.error : 'לא ידועה');
+    }
   }
 
-  // Read every field from the DOM back into `s`.
   function collect() {
     s.lanes.forEach(lane => {
       const card = laneEl(lane.id);
@@ -255,7 +307,8 @@
         s.google.clientSecret = card.querySelector('.f-gsecret').value.trim();
       }
     });
-    s.openAtLogin = el('openAtLogin').checked;
+    const login = el('openAtLogin');
+    if (login) s.openAtLogin = login.checked;
     return s;
   }
 
@@ -265,7 +318,11 @@
     setTimeout(() => sv.classList.remove('show'), 1600);
   });
 
-  window.api.getSettings().then(cfg => { s = cfg; if (!s.google) s.google = { clientId:'', clientSecret:'', refreshToken:'', email:'' }; renderLanes(); });
+  window.api.getSettings().then(cfg => {
+    s = cfg;
+    if (!s.google) s.google = { clientId:'', clientSecret:'', refreshToken:'', email:'' };
+    render();
+  });
 </script>
 </body>
 </html>
