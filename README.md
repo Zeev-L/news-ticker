@@ -48,12 +48,17 @@ article. Some Haaretz articles are behind a paywall.
 ## Calendar lane (Google Calendar)
 
 Shows today's timed events across **all** your calendars (work, personal, family…), only from
-`now` onward, sorted by start time. Each item: `[time]  event title  ·  first 2 attendees  ·
-location` — missing fields are omitted. Click → opens the meeting link (Meet/Zoom/Teams).
+`now` onward, sorted by start time. Each item:
+`[start–end]  event title  ·  first 2 attendees  ·  location` — missing fields are omitted, and
+each event's time badge is **coloured by its source calendar**. Click → opens the meeting link
+(Meet/Zoom/Teams).
+
+In ⚙ Settings (organized into **tabs** — one per lane + General) the Calendar tab lists all your
+Google calendars, each with an **enable toggle** and a **colour picker**.
 
 **One-time setup:** create a Google Cloud OAuth **Desktop app** client (enable Google Calendar
 API, configure the OAuth consent screen as *External* and publish it *In production* to avoid
-weekly token expiry). Paste the Client ID + Client Secret into the Calendar card in ⚙ Settings
+weekly token expiry). Paste the Client ID + Client Secret into the Calendar tab in ⚙ Settings
 and click **Connect Google Calendar**. Tokens are stored only in the local settings file.
 
 ## Run (development)
