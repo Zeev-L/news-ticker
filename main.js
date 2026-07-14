@@ -42,17 +42,20 @@ function laneConfigForRenderer(lane) {
 
 // ---------- Bounds / stacking ----------
 function laneBounds(lane) {
-  const fb = screen.getPrimaryDisplay().bounds;
+  const disp = screen.getPrimaryDisplay();
+  const fb = disp.bounds;
+  const wa = disp.workArea;   // excludes the macOS menu bar (top) and Dock
   const h = lane.height;
   if (lane.customPos && typeof lane.customPos.y === 'number') {
     return { x: lane.customPos.x, y: lane.customPos.y, width: fb.width, height: h };
   }
   // Stack lanes that share a side and haven't been individually dragged.
+  // "top" sits just below the macOS menu bar (workArea top), not behind it.
   const side = lane.position || 'top';
   const stack = enabledLanes().filter(l => (l.position || 'top') === side && !l.customPos);
   const idx = stack.findIndex(l => l.id === lane.id);
   const offset = stack.slice(0, idx).reduce((s, l) => s + l.height, 0);
-  const y = side === 'bottom' ? fb.y + fb.height - h - offset : fb.y + offset;
+  const y = side === 'bottom' ? (wa.y + wa.height - h - offset) : (wa.y + offset);
   return { x: fb.x, y, width: fb.width, height: h };
 }
 
