@@ -91,6 +91,7 @@
     const isCal = lane.kind === 'calendar';
     const isSlack = lane.kind === 'slack';
     const isNotes = lane.kind === 'notes';
+    const isTasks = lane.kind === 'tasks';
     const modeScroll = lane.mode === 'scroll';
     return `
     <div class="card lane" data-id="${esc(lane.id)}">
@@ -172,6 +173,20 @@
             <span class="gstatus n-iostatus"></span>
           </div>
           <div class="hint">כל מסר יופיע ברצף בשורה, כמו מבזק (או "מתחלף" — מסר אחד בכל פעם). לגיבוי/העברה למחשב אחר: ייצא לקובץ, שים אותו בענן (Drive/iCloud), ובמחשב האחר ייבא ושמור.</div>` : ''}
+        ${isTasks ? `
+          <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--line)">
+            <div class="row"><label>כתובת מיק (Web App /exec)</label>
+              <input type="text" class="f-turl" style="min-width:240px" value="${esc(lane.url)}" placeholder="https://script.google.com/macros/s/…/exec"></div>
+            <div class="row"><label>כתובת הלוח לפתיחה בקליק (רשות)</label>
+              <input type="text" class="f-tboard" style="min-width:240px" value="${esc(lane.boardUrl)}" placeholder="ריק = אותה כתובת"></div>
+            <div class="row"><label>Token (רק אם הגדרת ACCESS_TOKEN במיק)</label>
+              <input type="text" class="f-ttoken" style="min-width:180px" value="${esc(lane.token)}" placeholder="ריק אם אין"></div>
+            <div class="row">
+              <button class="btn sm primary t-test">בדוק חיבור</button>
+              <span class="gstatus t-status"></span>
+            </div>
+            <div class="keyhint">מציג משימות פתוחות שהיעד שלהן היום או עבר, בפורמט "קטגוריה - משימה" (🔴 באיחור). את הכתובת מקבלים ממיק: תפריט <code>ניהול משימות → 🌐 הצג כתובת ה-Web App</code>.</div>
+          </div>` : ''}
       </div>
     </div>`;
   }
@@ -252,6 +267,21 @@
         else if (r && r.error) { st.className = 'gstatus err'; st.textContent = r.error; }
       });
     }
+    if (lane.kind === 'tasks') {
+      card.querySelector('.t-test').addEventListener('click', () => tasksTest(lane, card));
+    }
+  }
+
+  async function tasksTest(lane, card) {
+    const st = card.querySelector('.t-status');
+    lane.url = card.querySelector('.f-turl').value.trim();
+    lane.boardUrl = card.querySelector('.f-tboard').value.trim();
+    lane.token = card.querySelector('.f-ttoken').value.trim();
+    if (!lane.url) { st.className = 'gstatus err'; st.textContent = 'אין כתובת'; return; }
+    st.className = 'gstatus'; st.textContent = 'בודק…';
+    const res = await window.api.tasksTest(lane);
+    if (res && res.ok) { st.className = 'gstatus ok'; st.textContent = '✅ ' + res.count + ' משימות להיום'; }
+    else { st.className = 'gstatus err'; st.textContent = 'שגיאה: ' + (res && res.error ? res.error : 'לא ידועה'); }
   }
 
   function renderNotes(lane) {
@@ -381,6 +411,11 @@
       }
       if (lane.kind === 'notes') {
         lane.notes = (lane.notes || []).map(t => String(t).trim()).filter(Boolean);
+      }
+      if (lane.kind === 'tasks') {
+        lane.url = card.querySelector('.f-turl').value.trim();
+        lane.boardUrl = card.querySelector('.f-tboard').value.trim();
+        lane.token = card.querySelector('.f-ttoken').value.trim();
       }
     });
     const login = el('openAtLogin');

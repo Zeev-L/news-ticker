@@ -12,7 +12,7 @@ const userCache = {};          // "token:userId" -> display name
 
 async function api(method, token, params) {
   const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-  const res = await fetch('https://slack.com/api/' + method + qs, {
+  const res = await globalThis.fetch('https://slack.com/api/' + method + qs, {
     headers: { Authorization: 'Bearer ' + token }
   });
   if (res.status === 429) {

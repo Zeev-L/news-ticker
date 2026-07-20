@@ -6,6 +6,7 @@ const rss = require('./providers/rss');
 const calendar = require('./providers/calendar');
 const slack = require('./providers/slack');
 const notes = require('./providers/notes');
+const tasks = require('./providers/tasks');
 
 let settings = settingsStore.DEFAULTS;
 let settingsWin = null;
@@ -18,6 +19,7 @@ function providerFor(lane) {
   if (lane.kind === 'calendar') return calendar;
   if (lane.kind === 'slack') return slack;
   if (lane.kind === 'notes') return notes;
+  if (lane.kind === 'tasks') return tasks;
   return rss;
 }
 function laneById(id) { return settings.lanes.find(l => l.id === id); }
@@ -39,6 +41,9 @@ function laneConfigForRenderer(lane) {
   }
   if (lane.kind === 'slack' && !(settings.slack && settings.slack.token)) {
     cfg.emptyText = 'הזן Slack token בהגדרות ⚙';
+  }
+  if (lane.kind === 'tasks' && !lane.url) {
+    cfg.emptyText = 'הגדר כתובת מיק בהגדרות ⚙';
   }
   return cfg;
 }
@@ -263,6 +268,10 @@ ipcMain.handle('google:calendars', async () => {
 });
 ipcMain.handle('slack:test', async () => {
   try { return await slack.test(settings); }
+  catch (e) { return { ok: false, error: e.message }; }
+});
+ipcMain.handle('tasks:test', async (_e, lane) => {
+  try { return await tasks.test(lane || {}); }
   catch (e) { return { ok: false, error: e.message }; }
 });
 ipcMain.handle('notes:export', async (_e, lines) => {

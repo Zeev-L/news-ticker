@@ -48,6 +48,17 @@ const NOTES_LANE = {
   notes: ['תתמקד בדבר אחד בכל פעם', 'נשום — יש לך שליטה על הצעד הבא']
 };
 
+const TASKS_LANE = {
+  id: 'tasks', kind: 'tasks', title: 'משימות', enabled: false,
+  position: 'top', mode: 'scroll', speed: 45, fadeSeconds: 8,
+  height: 20, fontSize: 11, opacity: 0.6, refreshSeconds: 300,
+  hotkey: 'Command+Alt+T', customPos: null,
+  barRgb: '16,32,24', badgeBg: '#1f9d55',
+  badgeMode: 'word', showMeta: false,
+  emptyText: 'הגדר כתובת מיק בהגדרות ⚙',
+  url: '', boardUrl: '', token: ''   // מיק Web App /exec URL (agenda source), board URL for click, optional token
+};
+
 const SLACK_LANE = {
   id: 'slack', kind: 'slack', title: 'Slack', enabled: false,
   position: 'top', mode: 'scroll', speed: 45, fadeSeconds: 8,
@@ -60,7 +71,7 @@ const SLACK_LANE = {
 };
 
 const DEFAULTS = {
-  lanes: [NEWS_LANE, CALENDAR_LANE, NOTES_LANE, SLACK_LANE],
+  lanes: [NEWS_LANE, CALENDAR_LANE, NOTES_LANE, TASKS_LANE, SLACK_LANE],
   google: { clientId: '', clientSecret: '', refreshToken: '', email: '' },
   slack: { token: '' },
   openAtLogin: false

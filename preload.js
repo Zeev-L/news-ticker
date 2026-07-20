@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('api', {
   disconnectGoogle: () => ipcRenderer.invoke('google:disconnect'),
   googleCalendars: () => ipcRenderer.invoke('google:calendars'),
   slackTest: () => ipcRenderer.invoke('slack:test'),
+  tasksTest: (lane) => ipcRenderer.invoke('tasks:test', lane),
   exportNotes: (lines) => ipcRenderer.invoke('notes:export', lines),
   importNotes: () => ipcRenderer.invoke('notes:import')
 });

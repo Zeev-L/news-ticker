@@ -5,9 +5,12 @@ Each bar is a **lane** fed by its own provider:
 
 - **News lane** — live headlines from Israeli news sites (RSS), merged chronologically.
 - **Calendar lane** — today's Google Calendar meetings, from the current time onward.
+- **Notes/mantras lane** — your own short texts, typed in Settings (with export/import).
+- **Tasks lane** — today's tasks from [the-mic](https://github.com/Zeev-L/the-mic) (מיק), due today or overdue.
+- **Slack lane** — unread DMs (and optionally channels), via a Slack user token.
 
 Built with Electron. Lanes are independent: each has its own colours, hotkey, drag position,
-and show/hide.
+and show/hide. Add more by dropping a provider in `providers/`.
 
 > פסים דקים ושקופים בקצה המסך: שורת מבזקים (RSS) ושורת יומן (Google Calendar), כל אחת נשלטת בנפרד.
 
