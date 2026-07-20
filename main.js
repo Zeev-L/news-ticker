@@ -4,6 +4,7 @@ const settingsStore = require('./settings');
 const rss = require('./providers/rss');
 const calendar = require('./providers/calendar');
 const slack = require('./providers/slack');
+const notes = require('./providers/notes');
 
 let settings = settingsStore.DEFAULTS;
 let settingsWin = null;
@@ -15,6 +16,7 @@ const laneState = {};
 function providerFor(lane) {
   if (lane.kind === 'calendar') return calendar;
   if (lane.kind === 'slack') return slack;
+  if (lane.kind === 'notes') return notes;
   return rss;
 }
 function laneById(id) { return settings.lanes.find(l => l.id === id); }

@@ -90,6 +90,7 @@
     const isRss = lane.kind === 'rss';
     const isCal = lane.kind === 'calendar';
     const isSlack = lane.kind === 'slack';
+    const isNotes = lane.kind === 'notes';
     const modeScroll = lane.mode === 'scroll';
     return `
     <div class="card lane" data-id="${esc(lane.id)}">
@@ -159,6 +160,11 @@
             </div>
             <div class="keyhint">איך משיגים token: יוצרים אפליקציית Slack (api.slack.com/apps) → User Token Scopes: <code>channels:read groups:read im:read mpim:read channels:history groups:history im:history mpim:history users:read</code> → Install to Workspace → מעתיקים את "User OAuth Token" (מתחיל ב-<code>xoxp-</code>).</div>
           </div>` : ''}
+        ${isNotes ? `
+          <div class="subttl">המסרים שלך — שורה אחת לכל מסר</div>
+          <div class="notes-list"></div>
+          <button class="addbtn f-addnote">＋ הוסף מסר</button>
+          <div class="hint">כל מסר יופיע ברצף בשורה, כמו מבזק. אפשר גם לעבור למצב "מתחלף" (למעלה) כדי לראות מסר אחד בכל פעם.</div>` : ''}
       </div>
     </div>`;
   }
@@ -224,6 +230,20 @@
     if (lane.kind === 'slack') {
       card.querySelector('.s-test').addEventListener('click', () => slackTest(lane, card));
     }
+    if (lane.kind === 'notes') renderNotes(lane);
+  }
+
+  function renderNotes(lane) {
+    lane.notes = lane.notes || [];
+    const wrap = laneEl(lane.id).querySelector('.notes-list');
+    wrap.innerHTML = lane.notes.map((tx, i) => `
+      <div class="src">
+        <input type="text" class="n-text" data-i="${i}" value="${esc(tx)}" placeholder="כתוב מסר לעצמך…">
+        <button class="del n-del" data-i="${i}" title="מחק">🗑</button>
+      </div>`).join('');
+    wrap.querySelectorAll('.n-text').forEach(c => c.addEventListener('input', e => lane.notes[e.target.dataset.i] = e.target.value));
+    wrap.querySelectorAll('.n-del').forEach(b => b.addEventListener('click', e => { lane.notes.splice(e.target.dataset.i, 1); renderNotes(lane); }));
+    laneEl(lane.id).querySelector('.f-addnote').onclick = () => { lane.notes.push(''); renderNotes(lane); };
   }
 
   async function slackTest(lane, card) {
@@ -337,6 +357,9 @@
       if (lane.kind === 'slack') {
         lane.includeChannels = card.querySelector('.f-channels').checked;
         s.slack.token = card.querySelector('.f-stoken').value.trim();
+      }
+      if (lane.kind === 'notes') {
+        lane.notes = (lane.notes || []).map(t => String(t).trim()).filter(Boolean);
       }
     });
     const login = el('openAtLogin');

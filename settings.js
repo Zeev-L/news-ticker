@@ -37,6 +37,17 @@ const CALENDAR_LANE = {
   calendars: []   // [{ id, name, enabled, color }] — filled from Google, editable in settings
 };
 
+const NOTES_LANE = {
+  id: 'notes', kind: 'notes', title: 'מנטרות', enabled: true,
+  position: 'top', mode: 'scroll', speed: 40, fadeSeconds: 8,
+  height: 20, fontSize: 11, opacity: 0.6, refreshSeconds: 600,
+  hotkey: 'Command+Alt+M', customPos: null,
+  barRgb: '24,20,40', badgeBg: '#7c5cff',
+  badgeMode: 'word', badgeWord: '✦', showMeta: false,
+  emptyText: 'הוסף מסרים בהגדרות ⚙',
+  notes: ['תתמקד בדבר אחד בכל פעם', 'נשום — יש לך שליטה על הצעד הבא']
+};
+
 const SLACK_LANE = {
   id: 'slack', kind: 'slack', title: 'Slack', enabled: false,
   position: 'top', mode: 'scroll', speed: 45, fadeSeconds: 8,
@@ -49,7 +60,7 @@ const SLACK_LANE = {
 };
 
 const DEFAULTS = {
-  lanes: [NEWS_LANE, CALENDAR_LANE, SLACK_LANE],
+  lanes: [NEWS_LANE, CALENDAR_LANE, NOTES_LANE, SLACK_LANE],
   google: { clientId: '', clientSecret: '', refreshToken: '', email: '' },
   slack: { token: '' },
   openAtLogin: false
