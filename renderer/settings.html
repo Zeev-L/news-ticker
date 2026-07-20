@@ -164,7 +164,14 @@
           <div class="subttl">המסרים שלך — שורה אחת לכל מסר</div>
           <div class="notes-list"></div>
           <button class="addbtn f-addnote">＋ הוסף מסר</button>
-          <div class="hint">כל מסר יופיע ברצף בשורה, כמו מבזק. אפשר גם לעבור למצב "מתחלף" (למעלה) כדי לראות מסר אחד בכל פעם.</div>` : ''}
+          <div class="row" style="margin-top:8px">
+            <div style="display:flex; gap:8px">
+              <button class="btn sm n-export">⬆︎ ייצא לקובץ</button>
+              <button class="btn sm n-import">⬇︎ ייבא מקובץ</button>
+            </div>
+            <span class="gstatus n-iostatus"></span>
+          </div>
+          <div class="hint">כל מסר יופיע ברצף בשורה, כמו מבזק (או "מתחלף" — מסר אחד בכל פעם). לגיבוי/העברה למחשב אחר: ייצא לקובץ, שים אותו בענן (Drive/iCloud), ובמחשב האחר ייבא ושמור.</div>` : ''}
       </div>
     </div>`;
   }
@@ -230,7 +237,21 @@
     if (lane.kind === 'slack') {
       card.querySelector('.s-test').addEventListener('click', () => slackTest(lane, card));
     }
-    if (lane.kind === 'notes') renderNotes(lane);
+    if (lane.kind === 'notes') {
+      renderNotes(lane);
+      const st = card.querySelector('.n-iostatus');
+      card.querySelector('.n-export').addEventListener('click', async () => {
+        lane.notes = (lane.notes || []).map(t => String(t).trim()).filter(Boolean);
+        const r = await window.api.exportNotes(lane.notes);
+        if (r && r.ok) { st.className = 'gstatus ok'; st.textContent = '✓ נשמר'; }
+        else if (r && r.error) { st.className = 'gstatus err'; st.textContent = r.error; }
+      });
+      card.querySelector('.n-import').addEventListener('click', async () => {
+        const r = await window.api.importNotes();
+        if (r && r.ok) { lane.notes = r.lines; renderNotes(lane); st.className = 'gstatus ok'; st.textContent = 'יובאו ' + r.lines.length + ' מסרים — לחץ שמור'; }
+        else if (r && r.error) { st.className = 'gstatus err'; st.textContent = r.error; }
+      });
+    }
   }
 
   function renderNotes(lane) {

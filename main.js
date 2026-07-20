@@ -1,5 +1,6 @@
-const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, shell, screen, nativeImage } = require('electron');
+const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, shell, screen, nativeImage, dialog } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const settingsStore = require('./settings');
 const rss = require('./providers/rss');
 const calendar = require('./providers/calendar');
@@ -263,6 +264,28 @@ ipcMain.handle('google:calendars', async () => {
 ipcMain.handle('slack:test', async () => {
   try { return await slack.test(settings); }
   catch (e) { return { ok: false, error: e.message }; }
+});
+ipcMain.handle('notes:export', async (_e, lines) => {
+  const { canceled, filePath } = await dialog.showSaveDialog({
+    title: 'ייצוא מסרים', defaultPath: 'news-ticker-mantras.txt',
+    filters: [{ name: 'Text', extensions: ['txt'] }]
+  });
+  if (canceled || !filePath) return { ok: false };
+  try {
+    fs.writeFileSync(filePath, (Array.isArray(lines) ? lines : []).join('\n') + '\n', 'utf8');
+    return { ok: true, path: filePath };
+  } catch (e) { return { ok: false, error: e.message }; }
+});
+ipcMain.handle('notes:import', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: 'ייבוא מסרים', properties: ['openFile'],
+    filters: [{ name: 'Text', extensions: ['txt'] }]
+  });
+  if (canceled || !filePaths || !filePaths[0]) return { ok: false };
+  try {
+    const lines = fs.readFileSync(filePaths[0], 'utf8').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+    return { ok: true, lines };
+  } catch (e) { return { ok: false, error: e.message }; }
 });
 
 // ---------- Manual per-lane drag (grab the coloured handle) ----------
