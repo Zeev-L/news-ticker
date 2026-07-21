@@ -5,7 +5,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-packager . \"News Ticker\" --platform=darwin --arch=x64 --out=build --overwrite --app-bundle-id=com.zeev.newsticker --app-version=1.0.0 --prune=true --ignore=\"^/build\""
+    "build": "electron-packager . \"News Ticker\" --platform=darwin --arch=x64 --out=build --overwrite --app-bundle-id=com.zeev.newsticker --app-version=1.0.0 --icon=assets/icon.icns --prune=true --ignore=\"^/build\""
   },
   "author": "Zeev",
   "license": "MIT",
