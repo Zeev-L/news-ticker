@@ -229,7 +229,10 @@ ipcMain.on('tasks:menu', (e, payload) => {
   if (!lane || lane.kind !== 'tasks' || !payload || !payload.id) return;
   const st = laneState[laneId];
   const menu = Menu.buildFromTemplate([
-    { label: '✓ סמן כבוצע', click: () => setTaskDone(lane, payload.id) },
+    { label: '✓ סמן כבוצע', click: () => {
+        if (st && st.win && !st.win.isDestroyed()) st.win.webContents.send('remove-item', String(payload.id)); // optimistic: drop it now
+        setTaskDone(lane, payload.id);
+      } },
     { type: 'separator' },
     { label: 'פתח במיק', click: () => { const u = lane.boardUrl || lane.url; if (u) shell.openExternal(u); } }
   ]);

@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('api', {
   getNews: () => ipcRenderer.invoke('get-news'),
   onNews: (cb) => ipcRenderer.on('news', (_e, data) => cb(data)),
   onConfig: (cb) => ipcRenderer.on('config', (_e, data) => cb(data)),
+  onRemoveItem: (cb) => ipcRenderer.on('remove-item', (_e, id) => cb(id)),
   openLink: (url) => ipcRenderer.send('open-link', url),
   hideTicker: () => ipcRenderer.send('hide-ticker'),
   openSettings: () => ipcRenderer.send('open-settings'),

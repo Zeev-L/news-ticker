@@ -313,6 +313,7 @@
   // ---------- Wiring ----------
   window.api.onNews((data) => { news = data || []; render(); });
   window.api.onConfig((c) => { cfg = Object.assign(cfg, c || {}); render(); });
+  window.api.onRemoveItem((id) => { news = (news || []).filter(n => String(n.id) !== String(id)); render(); });
 
   window.api.getConfig().then(c => { cfg = Object.assign(cfg, c || {}); return window.api.getNews(); })
     .then(data => { news = data || []; render(); });
