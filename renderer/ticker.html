@@ -161,6 +161,7 @@
       const metaBits = Array.isArray(n.meta) ? n.meta.filter(Boolean) : [];
       if (metaBits.length) parts.push('<span class="meta">' + escapeHtml(metaBits.join(' · ')) + '</span>');
       el.innerHTML = parts.join('');
+      if (n.id) { el.dataset.taskId = n.id; el.dataset.taskTitle = n.title; }
       el.addEventListener('click', () => n.action && window.api.openLink(n.action));
       return el;
     };
@@ -232,6 +233,7 @@
     const fb = holder.querySelector('.fbadge');
     fb.textContent = n.badge || '';
     fb.style.background = n.color || '';
+    if (n.id) { holder.dataset.taskId = n.id; holder.dataset.taskTitle = n.title; }
     holder.querySelector('.ttl').textContent = n.title;
     const metaBits = Array.isArray(n.meta) ? n.meta.filter(Boolean) : [];
     holder.querySelector('.fmeta').textContent = metaBits.join(' · ');
@@ -297,6 +299,15 @@
   document.body.addEventListener('mouseleave', () => {
     paused = false;
     if (!ignoring) { ignoring = true; window.api.setIgnore(true); }
+  });
+
+  // Right-click a task (tasks lane only) → native menu: mark done / open מיק.
+  document.addEventListener('contextmenu', (e) => {
+    if (cfg.kind !== 'tasks') return;
+    const item = e.target.closest && e.target.closest('.item, .fitem');
+    if (!item || !item.dataset.taskId) return;
+    e.preventDefault();
+    window.api.taskMenu({ id: item.dataset.taskId, title: item.dataset.taskTitle || '' });
   });
 
   // ---------- Wiring ----------

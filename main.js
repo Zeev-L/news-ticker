@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, shell, screen, nativeImage, dialog } = require('electron');
+const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, shell, screen, nativeImage, dialog, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const settingsStore = require('./settings');
@@ -221,6 +221,47 @@ ipcMain.on('open-link', (_e, url) => {
 });
 ipcMain.on('hide-ticker', (e) => { const id = laneIdForSender(e.sender); if (id) hideLane(id); });
 ipcMain.on('open-settings', () => createSettingsWindow());
+
+// Right-click a task in the ticker → mark done in מיק / open the board.
+ipcMain.on('tasks:menu', (e, payload) => {
+  const laneId = laneIdForSender(e.sender);
+  const lane = laneId ? laneById(laneId) : null;
+  if (!lane || lane.kind !== 'tasks' || !payload || !payload.id) return;
+  const st = laneState[laneId];
+  const menu = Menu.buildFromTemplate([
+    { label: '✓ סמן כבוצע', click: () => setTaskDone(lane, payload.id) },
+    { type: 'separator' },
+    { label: 'פתח במיק', click: () => { const u = lane.boardUrl || lane.url; if (u) shell.openExternal(u); } }
+  ]);
+  menu.popup(st && st.win ? { window: st.win } : {});
+});
+
+// POST form data via Electron's Chromium networking (handles Apps Script's
+// 302 redirect reliably, unlike Node/undici fetch which hangs on it).
+function postForm(url, params) {
+  return new Promise((resolve, reject) => {
+    const req = net.request({ method: 'POST', url, redirect: 'follow' });
+    req.setHeader('Content-Type', 'application/x-www-form-urlencoded');
+    let data = '';
+    req.on('response', (res) => {
+      res.on('data', d => { data += d; });
+      res.on('end', () => resolve(data));
+    });
+    req.on('error', reject);
+    req.write(new URLSearchParams(params).toString());
+    req.end();
+  });
+}
+
+async function setTaskDone(lane, id) {
+  if (!lane.url) return;
+  try {
+    await postForm(lane.url, { action: 'setstatus', id: String(id), status: 'DONE' });
+  } catch (err) {
+    console.error('setTaskDone failed:', err.message);
+  }
+  refreshLane(lane); // re-pull so the done task drops off the bar
+}
 ipcMain.on('set-ignore', (e, ignore) => {
   const id = laneIdForSender(e.sender);
   const st = id && laneState[id];

@@ -22,7 +22,8 @@ async function fetch(lane) {
       badge: t.overdue ? 'באיחור' : '',
       ts: 0,
       action,
-      color: t.overdue ? '#d64545' : (lane.badgeBg || '#1f9d55')
+      color: t.overdue ? '#d64545' : (lane.badgeBg || '#1f9d55'),
+      id: t.id != null ? String(t.id) : ''    // task id (for right-click "mark done")
     };
   });
 }

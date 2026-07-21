@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('api', {
   openLink: (url) => ipcRenderer.send('open-link', url),
   hideTicker: () => ipcRenderer.send('hide-ticker'),
   openSettings: () => ipcRenderer.send('open-settings'),
+  taskMenu: (payload) => ipcRenderer.send('tasks:menu', payload),
   setIgnore: (ignore) => ipcRenderer.send('set-ignore', ignore),
   dragStart: () => ipcRenderer.send('drag:start'),
   dragEnd: () => ipcRenderer.send('drag:end'),
