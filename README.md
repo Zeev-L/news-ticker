@@ -5,7 +5,7 @@ Each bar is a **lane** fed by its own provider:
 
 - **News lane** — live headlines from Israeli news sites (RSS), merged chronologically.
 - **Calendar lane** — today's Google Calendar meetings, from the current time onward.
-- **Notes/mantras lane** — your own short texts, typed in Settings (with export/import).
+- **Notes/mantras & Reminders lanes** — your own short texts, typed in Settings (with export/import).
 - **Tasks lane** — today's tasks from [the-mic](https://github.com/Zeev-L/the-mic) (מיק), due today or overdue; **right-click a task → mark done** (updates מיק, drops off instantly) or open the board.
 - **Slack lane** — unread DMs (and optionally channels), via a Slack user token.
 

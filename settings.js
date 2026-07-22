@@ -48,6 +48,17 @@ const NOTES_LANE = {
   notes: ['תתמקד בדבר אחד בכל פעם', 'נשום — יש לך שליטה על הצעד הבא']
 };
 
+const REMINDERS_LANE = {
+  id: 'reminders', kind: 'notes', title: 'תזכורות', enabled: true,
+  position: 'top', mode: 'scroll', speed: 40, fadeSeconds: 8,
+  height: 20, fontSize: 11, opacity: 0.6, refreshSeconds: 600,
+  hotkey: 'Command+Alt+R', customPos: null,
+  barRgb: '34,26,12', badgeBg: '#f59e0b',
+  badgeMode: 'word', badgeWord: '⏰', showMeta: false,
+  emptyText: 'הוסף תזכורות בהגדרות ⚙',
+  notes: ['לשתות מים ולזוז קצת', 'לסיים משימה אחת לפני שמתחילים חדשה']
+};
+
 const TASKS_LANE = {
   id: 'tasks', kind: 'tasks', title: 'משימות', enabled: false,
   position: 'top', mode: 'scroll', speed: 45, fadeSeconds: 8,
@@ -71,7 +82,7 @@ const SLACK_LANE = {
 };
 
 const DEFAULTS = {
-  lanes: [NEWS_LANE, CALENDAR_LANE, NOTES_LANE, TASKS_LANE, SLACK_LANE],
+  lanes: [NEWS_LANE, CALENDAR_LANE, NOTES_LANE, REMINDERS_LANE, TASKS_LANE, SLACK_LANE],
   google: { clientId: '', clientSecret: '', refreshToken: '', email: '' },
   slack: { token: '' },
   openAtLogin: false
